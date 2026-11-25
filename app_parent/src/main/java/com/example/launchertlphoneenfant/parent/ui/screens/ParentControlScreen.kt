@@ -1,5 +1,6 @@
 package com.example.launchertlphoneenfant.parent.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,14 +25,24 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.launchertlphoneenfant.parent.data.ApkInstaller
+import com.example.launchertlphoneenfant.parent.data.AppUpdateInfo
+import com.example.launchertlphoneenfant.parent.data.UpdateChecker
+import com.example.launchertlphoneenfant.parent.data.UpdateDialog
+import kotlinx.coroutines.launch
 
 @Composable
 fun ParentControlScreen(
@@ -45,6 +56,15 @@ fun ParentControlScreen(
     onLockDevice: () -> Unit,
     onUnlockDevice: () -> Unit
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val updateChecker = remember { UpdateChecker() }
+    val apkInstaller = remember { ApkInstaller(context) }
+
+    var updateInfoState by remember { mutableStateOf<AppUpdateInfo?>(null) }
+    var downloadProgressState by remember { mutableStateOf<Int?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -140,5 +160,46 @@ fun ParentControlScreen(
                 }
             }
         }
+
+        // Section Mise à Jour Manuelle
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            enabled = !isCheckingUpdate,
+            onClick = {
+                isCheckingUpdate = true
+                coroutineScope.launch {
+                    val info = updateChecker.checkCloudUpdate("parent")
+                    isCheckingUpdate = false
+                    if (info.hasUpdate) {
+                        updateInfoState = info
+                    } else {
+                        Toast.makeText(context, "Vous utilisez déjà la dernière version de l'application !", Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+        ) {
+            Icon(Icons.Default.Cloud, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(if (isCheckingUpdate) "Vérification en cours..." else "Vérifier les Mises à Jour (Parent)")
+        }
+    }
+
+    // Pop-up de mise à jour si disponible
+    updateInfoState?.let { updateInfo ->
+        UpdateDialog(
+            updateInfo = updateInfo,
+            downloadProgress = downloadProgressState,
+            onDismiss = { updateInfoState = null },
+            onDownloadClick = { downloadUrl ->
+                coroutineScope.launch {
+                    apkInstaller.downloadAndInstallApk(downloadUrl) { progress ->
+                        downloadProgressState = progress
+                    }
+                }
+            }
+        )
     }
 }
