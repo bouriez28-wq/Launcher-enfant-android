@@ -54,71 +54,59 @@ jobs:
           git tag -f $VERSION_NAME
           git push -f origin $VERSION_NAME
 
-      - name: Créer la Release Continue GitHub
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-dev
-          name: Dernière Version (Dev)
-          draft: false
-          prerelease: false
-          make_latest: true
-          files: |
-            app_enfant/build/outputs/apk/debug/app_enfant-debug.apk
-            app_parent/build/outputs/apk/debug/app_parent-debug.apk
-
-      - name: Installer Node.js et Firebase CLI
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm install -g firebase-tools
-
-      - name: Déployer Firebase Hosting (Portail Web)
+      - name: Téléverser les APK vers Firebase Storage (Contournement GitHub Releases)
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: firebase deploy --only hosting --project launcher-enfant
-
-      - name: Mettre à jour Firebase Database (Alertes Téléphones)
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
         run: |
-          cat << 'EOF' > update_db.js
+          cat << 'EOF' > upload_to_storage.js
           const admin = require("firebase-admin");
           const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-          const versionNumber = parseInt(process.env.RUN_NUMBER);
           
           admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
+            storageBucket: "launcher-enfant.firebasestorage.app",
             databaseURL: "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
           });
           
+          const bucket = admin.storage().bucket();
           const db = admin.database();
           
-          async function notifyUpdate(dbPath, fileName) {
-            const url = `https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/${fileName}`;
+          async function uploadApk(filePath, destinationName, dbPath) {
+            console.log(`Upload de ${destinationName}...`);
+            await bucket.upload(filePath, {
+              destination: destinationName,
+              metadata: {
+                contentType: 'application/vnd.android.package-archive',
+                cacheControl: 'public, max-age=0'
+              }
+            });
+            const file = bucket.file(destinationName);
+            await file.makePublic();
+            
+            const url = `https://storage.googleapis.com/launcher-enfant.firebasestorage.app/${destinationName}`;
+            
+            const versionNumber = parseInt(process.env.RUN_NUMBER);
             await db.ref(`app_updates/${dbPath}`).update({
               downloadUrl: url,
               latestVersionCode: versionNumber,
               latestVersionName: "latest-dev",
               releaseNotes: "Mise à jour en cours de développement (Test)"
             });
-            console.log(`Database mise à jour pour ${dbPath} !`);
+            console.log(`Base de données mise à jour pour ${dbPath} avec le lien Storage direct !`);
           }
           
           async function run() {
              try {
-                await notifyUpdate('child', 'app_enfant-debug.apk');
-                await notifyUpdate('parent', 'app_parent-debug.apk');
+                await uploadApk('app_enfant/build/outputs/apk/debug/app_enfant-debug.apk', 'app-enfant.apk', 'child');
+                await uploadApk('app_parent/build/outputs/apk/debug/app_parent-debug.apk', 'app-parent.apk', 'parent');
                 process.exit(0);
              } catch(e) {
-                console.error("Erreur Database:", e);
+                console.error("Erreur de déploiement:", e);
                 process.exit(1);
              }
           }
-          
           run();
           EOF
-          
           npm install firebase-admin
-          node update_db.js
-        env:
-          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
-          RUN_NUMBER: ${{ github.run_number }}
-          VERSION_NAME: ${{ env.VERSION_NAME }}
+          node upload_to_storage.js
