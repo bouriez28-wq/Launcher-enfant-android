@@ -27,8 +27,8 @@ jobs:
       - name: Rendre Gradle exécutable
         run: chmod +x ./gradlew
 
-      - name: Compiler les applications (Enfant et Parent)
-        run: ./gradlew assembleDebug
+      - name: Compiler les applications avec logs détaillés
+        run: ./gradlew assembleDebug --stacktrace --info
 
       - name: Supprimer l'ancienne Release (si existante)
         env:
