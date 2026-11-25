@@ -27,8 +27,8 @@ jobs:
       - name: Rendre Gradle exécutable
         run: chmod +x ./gradlew
 
-      - name: Compiler les applications avec logs détaillés
-        run: ./gradlew assembleDebug --stacktrace --info
+      - name: Compiler les applications (Enfant et Parent)
+        run: ./gradlew assembleDebug
 
       - name: Supprimer l'ancienne Release (si existante)
         env:
@@ -54,59 +54,72 @@ jobs:
           git tag -f $VERSION_NAME
           git push -f origin $VERSION_NAME
 
-      - name: Téléverser les APK vers Firebase Storage (Contournement GitHub Releases)
+      - name: Publier la Release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-dev
+          name: Dernière Version (Dev)
+          draft: false
+          prerelease: false
+          files: |
+            app_enfant/build/outputs/apk/debug/app_enfant-debug.apk
+            app_parent/build/outputs/apk/debug/app_parent-debug.apk
         env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mettre à jour Firebase Database (Alertes Téléphones)
         run: |
-          cat << 'EOF' > upload_to_storage.js
+          cat << 'EOF' > update_db.js
           const admin = require("firebase-admin");
-          const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
           
-          admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-            storageBucket: "launcher-enfant.firebasestorage.app",
-            databaseURL: "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
-          });
+          const rawCredentials = process.env.FIREBASE_CREDENTIALS;
+          if (!rawCredentials || rawCredentials.trim() === '' || !rawCredentials.startsWith('{')) {
+             console.log("⚠️ FIREBASE_CREDENTIALS absent ou invalide, mise à jour DB ignorée silencieusement.");
+             process.exit(0);
+          }
           
-          const bucket = admin.storage().bucket();
-          const db = admin.database();
-          
-          async function uploadApk(filePath, destinationName, dbPath) {
-            console.log(`Upload de ${destinationName}...`);
-            await bucket.upload(filePath, {
-              destination: destinationName,
-              metadata: {
-                contentType: 'application/vnd.android.package-archive',
-                cacheControl: 'public, max-age=0'
-              }
-            });
-            const file = bucket.file(destinationName);
-            await file.makePublic();
-            
-            const url = `https://storage.googleapis.com/launcher-enfant.firebasestorage.app/${destinationName}`;
-            
+          try {
+            const serviceAccount = JSON.parse(rawCredentials);
             const versionNumber = parseInt(process.env.RUN_NUMBER);
-            await db.ref(`app_updates/${dbPath}`).update({
-              downloadUrl: url,
-              latestVersionCode: versionNumber,
-              latestVersionName: "latest-dev",
-              releaseNotes: "Mise à jour en cours de développement (Test)"
+            const versionName = process.env.VERSION_NAME;
+            
+            admin.initializeApp({
+              credential: admin.credential.cert(serviceAccount),
+              databaseURL: "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
             });
-            console.log(`Base de données mise à jour pour ${dbPath} avec le lien Storage direct !`);
+            
+            const db = admin.database();
+            
+            async function notifyUpdate(dbPath, fileName) {
+              const url = `https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/${versionName}/${fileName}`;
+              await db.ref(`app_updates/${dbPath}`).update({
+                downloadUrl: url,
+                latestVersionCode: versionNumber,
+                latestVersionName: versionName,
+                releaseNotes: "Mise à jour automatique disponible 🎉"
+              });
+              console.log(`Database mise à jour pour ${dbPath} !`);
+            }
+            
+            async function run() {
+               try {
+                  await notifyUpdate('child', 'app_enfant-debug.apk');
+                  await notifyUpdate('parent', 'app_parent-debug.apk');
+                  process.exit(0);
+               } catch(e) {
+                  console.error("Erreur Database:", e);
+                  process.exit(0);
+               }
+            }
+            run();
+          } catch(e) {
+            console.log("⚠️ Clé Firebase non valide, mise à jour ignorée.");
+            process.exit(0);
           }
-          
-          async function run() {
-             try {
-                await uploadApk('app_enfant/build/outputs/apk/debug/app_enfant-debug.apk', 'app-enfant.apk', 'child');
-                await uploadApk('app_parent/build/outputs/apk/debug/app_parent-debug.apk', 'app-parent.apk', 'parent');
-                process.exit(0);
-             } catch(e) {
-                console.error("Erreur de déploiement:", e);
-                process.exit(1);
-             }
-          }
-          run();
           EOF
           npm install firebase-admin
-          node upload_to_storage.js
+          node update_db.js
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+          RUN_NUMBER: ${{ github.run_number }}
+          VERSION_NAME: ${{ env.VERSION_NAME }}
