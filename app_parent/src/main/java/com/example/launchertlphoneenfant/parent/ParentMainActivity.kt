@@ -149,7 +149,7 @@ fun ParentAppNavigation() {
                         database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(60)
                     }
                 )
-                1 -> ParentValidationScreen()
+                1 -> ParentValidationScreen(familyCode = familyCode)
                 2 -> ParentRoutinesScreen()
                 3 -> ParentStoriesScreen()
             }
