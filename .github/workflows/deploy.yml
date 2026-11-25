@@ -26,20 +26,21 @@ jobs:
       - name: Compiler les applications (Enfant et Parent)
         run: ./gradlew assembleDebug
 
-      - name: Configurer l'accès GitHub
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "<>"
-
       - name: Créer le Tag de Version
         id: tagger
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION_NAME="1.0.${{ github.run_number }}"
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          
+          # Configuration manuelle pour l'authentification dans l'URL Git
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+          
           git tag $VERSION_NAME
           git push origin $VERSION_NAME
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Créer la Release GitHub
         uses: softprops/action-gh-release@v2
