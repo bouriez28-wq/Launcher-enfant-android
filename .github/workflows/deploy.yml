@@ -46,62 +46,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database (Alertes Téléphones)
-        run: |
-          cat << 'EOF' > update_db.js
-          const { initializeApp, cert } = require("firebase-admin/app");
-          const { getDatabase } = require("firebase-admin/database");
-          
-          const rawCredentials = process.env.FIREBASE_CREDENTIALS;
-          const cleaned = rawCredentials ? rawCredentials.trim() : '';
-          
-          if (!cleaned || !cleaned.startsWith('{')) {
-             console.log("⚠️ FIREBASE_CREDENTIALS absent ou mal formé.");
-             process.exit(0);
-          }
-          
-          try {
-            const serviceAccount = JSON.parse(cleaned);
-            const versionNumber = parseInt(process.env.RUN_NUMBER);
-            
-            initializeApp({
-              credential: cert(serviceAccount),
-              databaseURL: "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
-            });
-            
-            const db = getDatabase();
-            
-            async function notifyUpdate(dbPath, driveUrl) {
-              await db.ref(`app_updates/${dbPath}`).update({
-                downloadUrl: driveUrl,
-                latestVersionCode: versionNumber,
-                latestVersionName: "latest-dev",
-                releaseNotes: "Mise à jour disponible 🎉"
-              });
-              console.log(`Database mise à jour avec succès pour ${dbPath} !`);
-            }
-            
-            async function run() {
-               try {
-                  await notifyUpdate('child', 'https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk');
-                  await notifyUpdate('parent', 'https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk');
-                  console.log("Mise à jour complète effectuée avec succès !");
-                  process.exit(0);
-               } catch(e) {
-                  console.error("Erreur écriture Database:", e);
-                  process.exit(0);
-               }
-            }
-            run();
-           } catch(e) {
-            console.log("⚠️ Erreur décodage JSON FIREBASE_CREDENTIALS:", e.message);
-            console.log("Longueur reçue:", cleaned ? cleaned.length : 0);
-            console.log("Début du texte:", cleaned ? cleaned.substring(0, 30) : "vide");
-            process.exit(0);
-          }
-          EOF
-          npm install firebase-admin
-          node update_db.js
+      - name: Mettre à jour Firebase Database via REST API
         env:
-          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
-          RUN_NUMBER: ${{ github.run_number }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          RUN_NUMBER=${{ github.run_number }}
+          PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+          CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
+          
+          echo "Mise à jour de Firebase pour le parent..."
+          curl -s -X PATCH -d "{\"latestVersionCode\": $RUN_NUMBER, \"latestVersionName\": \"latest-dev\", \"downloadUrl\": \"$PARENT_URL\", \"releaseNotes\": \"Mise à jour disponible 🎉\"}" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json?auth=$FIREBASE_TOKEN"
+          
+          echo "Mise à jour de Firebase pour l'enfant..."
+          curl -s -X PATCH -d "{\"latestVersionCode\": $RUN_NUMBER, \"latestVersionName\": \"latest-dev\", \"downloadUrl\": \"$CHILD_URL\", \"releaseNotes\": \"Mise à jour disponible 🎉\"}" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json?auth=$FIREBASE_TOKEN"
+          
+          echo "Base de données Firebase mise à jour avec succès !"
