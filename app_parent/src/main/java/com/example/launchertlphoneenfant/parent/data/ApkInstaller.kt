@@ -10,6 +10,7 @@ import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -32,11 +33,17 @@ class ApkInstaller(private val context: Context) {
             }
 
             var currentUrl = downloadUrl
+            // Bypass page HTML de confirmation de Google Drive pour obtenir directement le binaire APK
+            if (currentUrl.contains("drive.google.com") && !currentUrl.contains("confirm=")) {
+                val fileId = if (currentUrl.contains("id=")) currentUrl.substringAfter("id=").substringBefore("&")
+                             else currentUrl.substringAfter("/file/d/").substringBefore("/")
+                currentUrl = "https://drive.google.com/uc?export=download&id=$fileId&confirm=t"
+            }
+
             var connection: HttpURLConnection? = null
             var responseCode = -1
             var redirectCount = 0
 
-            // Boucle de redirection pour gérer Google Drive / GitHub HTTPS redirects
             while (redirectCount < 6) {
                 val url = URL(currentUrl)
                 connection = url.openConnection() as HttpURLConnection
@@ -92,7 +99,7 @@ class ApkInstaller(private val context: Context) {
             inputStream.close()
             connection.disconnect()
 
-            if (apkFile.exists() && apkFile.length() > 100000) {
+            if (apkFile.exists() && apkFile.length() > 500000 && isApkValidZip(apkFile)) {
                 launchInstaller(apkFile)
                 return@withContext true
             } else {
@@ -101,6 +108,19 @@ class ApkInstaller(private val context: Context) {
         } catch (e: Exception) {
             e.printStackTrace()
             return@withContext false
+        }
+    }
+
+    private fun isApkValidZip(file: File): Boolean {
+        return try {
+            if (file.length() < 100) return false
+            val bytes = ByteArray(4)
+            val fis = FileInputStream(file)
+            val read = fis.read(bytes)
+            fis.close()
+            read == 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte() && bytes[2] == 0x03.toByte() && bytes[3] == 0x04.toByte()
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -113,7 +133,7 @@ class ApkInstaller(private val context: Context) {
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(apkUri, "application/vnd.android.package-archive")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
         }
 
