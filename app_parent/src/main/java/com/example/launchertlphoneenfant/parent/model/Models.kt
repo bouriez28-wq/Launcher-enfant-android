@@ -11,7 +11,15 @@ enum class TimeOfDay(val displayName: String, val icon: String) {
 enum class RoutineFrequency(val displayName: String, val icon: String) {
     DAILY("Quotidienne", "🔄"),
     WEEKLY("Hebdomadaire", "📅"),
-    MONTHLY("Mensuelle", "📆")
+    MONTHLY("Mensuelle", "📆"),
+    SEASONAL("Saisonnire", "🍂")
+}
+
+enum class Season(val displayName: String, val icon: String) {
+    SPRING("Printemps", "🌸"),
+    SUMMER("Été", "☀️"),
+    AUTUMN("Automne", "🍂"),
+    WINTER("Hiver", "❄️")
 }
 
 data class RoutineItem(
@@ -25,6 +33,7 @@ data class RoutineItem(
     val completedDate: String = "",
     val isPendingValidation: Boolean = false,
     val frequency: RoutineFrequency = RoutineFrequency.DAILY,
+    val season: Season? = null,
     val orderIndex: Int = 0
 )
 
