@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.launchertlphoneenfant.parent.app_parent-mergeDebugResources-72:/values-v30/values-v30.xml",
+            "outputFile": "com.example.launchertlphoneenfant.parent.app_parent-mergeDebugResources-73:/values-v30/values-v30.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\nicol\\.gradle\\caches\\9.9.1\\transforms\\24360d3905aa7c6a05b9c8fa0c4978ec\\transformed\\material3-release\\res\\values-v30\\values-v30.xml",
+                    "source": "C:\\Users\\nicol\\.gradle\\caches\\9.9.1\\transforms\\cc4607aef9be3f88a4e71fa7a21bcef2\\transformed\\material3-release\\res\\values-v30\\values-v30.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

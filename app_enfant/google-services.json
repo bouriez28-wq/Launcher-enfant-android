@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "1053945372798",
+    "firebase_url": "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "launcher-enfant",
+    "storage_bucket": "launcher-enfant.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1053945372798:android:4c8979af50059aaa2ef82f",
+        "android_client_info": {
+          "package_name": "com.example.launchertlphoneenfant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_T4JnieyTLyo2-C6JNWcGYzALVfxHE_o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1053945372798:android:e59732bbf971d6eb2ef82f",
+        "android_client_info": {
+          "package_name": "com.example.launchertlphoneenfant.parent"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_T4JnieyTLyo2-C6JNWcGYzALVfxHE_o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.launchertlphoneenfant.parent.app_parent-mergeDebugResources-72:/values-large-v4/values-large-v4.xml",
+            "outputFile": "com.example.launchertlphoneenfant.parent.app_parent-mergeDebugResources-73:/values-large-v4/values-large-v4.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\nicol\\.gradle\\caches\\9.9.1\\transforms\\5d52f7120407bb33a3c980f24ab32f0d\\transformed\\material-1.12.0\\res\\values-large-v4\\values-large-v4.xml",
+                    "source": "C:\\Users\\nicol\\.gradle\\caches\\9.9.1\\transforms\\3754165d5396669acab84c4d0850deec\\transformed\\material-1.12.0\\res\\values-large-v4\\values-large-v4.xml",
                     "from": {
                         "startLines": "2,3,4,5",
                         "startColumns": "4,4,4,4",
@@ -21,7 +21,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\nicol\\.gradle\\caches\\9.9.1\\transforms\\835daf99510a7d1d3cad354089a1f279\\transformed\\appcompat-1.7.0\\res\\values-large-v4\\values-large-v4.xml",
+                    "source": "C:\\Users\\nicol\\.gradle\\caches\\9.9.1\\transforms\\57fb419047b363162f64132eb9255ab4\\transformed\\appcompat-1.7.0\\res\\values-large-v4\\values-large-v4.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10",
                         "startColumns": "4,4,4,4,4,4,4,4,4",
