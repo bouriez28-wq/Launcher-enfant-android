@@ -78,6 +78,7 @@ dependencies {
     implementation(firebaseBom)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.database)
+    implementation(libs.firebase.messaging)
     implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
