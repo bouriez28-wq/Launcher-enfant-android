@@ -30,29 +30,38 @@ jobs:
       - name: Compiler les applications (Enfant et Parent)
         run: ./gradlew assembleDebug
 
+      - name: Supprimer l'ancienne Release (si existante)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "latest-dev" --yes || true
+          git push --delete origin "latest-dev" || true
+
       - name: Créer le Tag de Version
         id: tagger
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION_NAME="1.0.${{ github.run_number }}"
+          VERSION_NAME="latest-dev"
+          RUN_NUMBER=${{ github.run_number }}
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "RUN_NUMBER=$RUN_NUMBER" >> $GITHUB_ENV
           
-          # Configuration manuelle pour l'authentification dans l'URL Git
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
           
-          git tag $VERSION_NAME
-          git push origin $VERSION_NAME
+          git tag -f $VERSION_NAME
+          git push -f origin $VERSION_NAME
 
-      - name: Créer la Release GitHub
+      - name: Créer la Release Continue GitHub
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION_NAME }}
-          name: Mise à jour ${{ env.VERSION_NAME }}
+          tag_name: latest-dev
+          name: Dernière Version (Dev)
           draft: false
           prerelease: false
+          make_latest: true
           files: |
             app_enfant/build/outputs/apk/debug/app_enfant-debug.apk
             app_parent/build/outputs/apk/debug/app_parent-debug.apk
@@ -74,7 +83,6 @@ jobs:
           const admin = require("firebase-admin");
           const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
           const versionNumber = parseInt(process.env.RUN_NUMBER);
-          const versionName = process.env.VERSION_NAME;
           
           admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
@@ -84,12 +92,12 @@ jobs:
           const db = admin.database();
           
           async function notifyUpdate(dbPath, fileName) {
-            const url = `https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/${versionName}/${fileName}`;
+            const url = `https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/${fileName}`;
             await db.ref(`app_updates/${dbPath}`).update({
               downloadUrl: url,
               latestVersionCode: versionNumber,
-              latestVersionName: versionName,
-              releaseNotes: "Mise à jour automatique disponible 🎉"
+              latestVersionName: "latest-dev",
+              releaseNotes: "Mise à jour en cours de développement (Test)"
             });
             console.log(`Database mise à jour pour ${dbPath} !`);
           }
