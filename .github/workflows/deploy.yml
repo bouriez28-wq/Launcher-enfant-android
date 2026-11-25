@@ -1,0 +1,113 @@
+name: Compilation et Déploiement Firebase
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Rendre Gradle exécutable
+        run: chmod +x ./gradlew
+
+      - name: Compiler les applications (Enfant et Parent)
+        run: ./gradlew assembleDebug
+
+      - name: Installer Node.js et Firebase CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g firebase-tools
+
+      - name: Déployer Firebase Hosting (Portail Web)
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: firebase deploy --only hosting --project launcher-enfant
+
+      - name: Script de déploiement Storage et Update (Node.js)
+        run: |
+          cat << 'EOF' > deploy_script.js
+          const admin = require("firebase-admin");
+          const fs = require('fs');
+          
+          const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+          
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            storageBucket: "launcher-enfant.firebasestorage.app",
+            databaseURL: "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
+          });
+          
+          const bucket = admin.storage().bucket();
+          const db = admin.database();
+          
+          async function uploadApk(filePath, destinationName, dbPath) {
+            console.log(`Upload de ${destinationName}...`);
+            
+            await bucket.upload(filePath, {
+              destination: destinationName,
+              metadata: {
+                contentType: 'application/vnd.android.package-archive',
+                cacheControl: 'public, max-age=0'
+              }
+            });
+            
+            const file = bucket.file(destinationName);
+            await file.makePublic();
+            
+            const url = `https://storage.googleapis.com/launcher-enfant.firebasestorage.app/${destinationName}`;
+            
+            console.log(`Mise à jour de la base de données : ${dbPath}`);
+            const ref = db.ref(`app_updates/${dbPath}`);
+            
+            const snapshot = await ref.get();
+            let newVersionCode = 1;
+            let newVersionName = "1.0";
+            
+            if (snapshot.exists()) {
+               const currentCode = snapshot.val().latestVersionCode || 1;
+               newVersionCode = currentCode + 1;
+               newVersionName = `1.${newVersionCode}`;
+            }
+            
+            await ref.update({
+              downloadUrl: url,
+              latestVersionCode: newVersionCode,
+              latestVersionName: newVersionName,
+              releaseNotes: "Mise à jour automatique disponible 🎉"
+            });
+            
+            console.log(`Terminé pour ${dbPath} !`);
+          }
+          
+          async function run() {
+             try {
+                await uploadApk('app_enfant/build/outputs/apk/debug/app_enfant-debug.apk', 'app-enfant.apk', 'child');
+                await uploadApk('app_parent/build/outputs/apk/debug/app_parent-debug.apk', 'app-parent.apk', 'parent');
+                process.exit(0);
+             } catch(e) {
+                console.error("Erreur de déploiement:", e);
+                process.exit(1);
+             }
+          }
+          
+          run();
+          EOF
+          
+          npm install firebase-admin
+          node deploy_script.js
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
