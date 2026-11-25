@@ -72,21 +72,21 @@ jobs:
             
             const db = admin.database();
             
-            async function notifyUpdate(dbPath, fileName) {
-              const url = `https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/${versionName}/${fileName}`;
+            async function notifyUpdate(dbPath, driveUrl) {
+              const versionNumber = parseInt(process.env.RUN_NUMBER);
               await db.ref(`app_updates/${dbPath}`).update({
-                downloadUrl: url,
+                downloadUrl: driveUrl,
                 latestVersionCode: versionNumber,
-                latestVersionName: versionName,
-                releaseNotes: "Mise à jour automatique disponible 🎉"
+                latestVersionName: "latest-dev",
+                releaseNotes: "Mise à jour disponible 🎉"
               });
-              console.log(`Database mise à jour avec succès pour ${dbPath} !`);
+              console.log(`Database mise à jour avec le lien Google Drive direct pour ${dbPath} !`);
             }
             
             async function run() {
                try {
-                  await notifyUpdate('child', 'app_enfant-debug.apk');
-                  await notifyUpdate('parent', 'app_parent-debug.apk');
+                  await notifyUpdate('child', 'https://drive.google.com/uc?export=download&id=1wx_gApYFN9Qzpe2w27OmcK62oNimxbde');
+                  await notifyUpdate('parent', 'https://drive.google.com/uc?export=download&id=1K2Ux0Q-6pMzIT2P1DHAokYnIDXHrNZcZ');
                   process.exit(0);
                } catch(e) {
                   console.error("Erreur écriture Database:", e);
