@@ -150,8 +150,8 @@ fun ParentAppNavigation() {
                     }
                 )
                 1 -> ParentValidationScreen(familyCode = familyCode)
-                2 -> ParentRoutinesScreen()
-                3 -> ParentStoriesScreen()
+                2 -> ParentRoutinesScreen(familyCode = familyCode)
+                3 -> ParentStoriesScreen(familyCode = familyCode)
             }
         }
     }
