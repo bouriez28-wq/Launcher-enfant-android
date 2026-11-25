@@ -21,3 +21,12 @@ data class RewardClaimHistory(
     val timestamp: Long = System.currentTimeMillis(),
     val isPendingApproval: Boolean = true
 )
+
+data class RewardItem(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String = "",
+    val description: String = "",
+    val icon: String = "🎁",
+    val starCost: Int = 5,
+    val timesClaimed: Int = 0
+)
