@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +18,17 @@ import java.net.URL
 
 class ApkInstaller(private val context: Context) {
 
+    fun openInBrowser(downloadUrl: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     suspend fun downloadAndInstallApk(
         downloadUrl: String,
         onProgress: (Int) -> Unit
@@ -25,6 +37,7 @@ class ApkInstaller(private val context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (!context.packageManager.canRequestPackageInstalls()) {
                     withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Veuillez autoriser l'installation d'applications inconnues", Toast.LENGTH_LONG).show()
                         val permIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
                             data = Uri.parse("package:${context.packageName}")
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -71,6 +84,7 @@ class ApkInstaller(private val context: Context) {
 
             if (connection == null || responseCode !in 200..299) {
                 connection?.disconnect()
+                withContext(Dispatchers.Main) { openInBrowser(downloadUrl) }
                 return@withContext false
             }
 
@@ -102,15 +116,22 @@ class ApkInstaller(private val context: Context) {
             connection.disconnect()
 
             if (apkFile.exists() && apkFile.length() > 500000 && isApkValidZip(apkFile)) {
+                apkFile.setReadable(true, false)
                 withContext(Dispatchers.Main) {
-                    launchInstaller(apkFile)
+                    try {
+                        launchInstaller(apkFile)
+                    } catch (e: Exception) {
+                        openInBrowser(downloadUrl)
+                    }
                 }
                 return@withContext true
             } else {
+                withContext(Dispatchers.Main) { openInBrowser(downloadUrl) }
                 return@withContext false
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            withContext(Dispatchers.Main) { openInBrowser(downloadUrl) }
             return@withContext false
         }
     }

@@ -41,6 +41,25 @@ import com.google.firebase.database.ValueEventListener
 class ParentMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Demande d'autorisation de notifications PUSH sur Android 13+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 102)
+            }
+        }
+
+        // Enregistrement du Token FCM pour réveiller le téléphone Parent
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                if (!token.isNullOrBlank()) {
+                    com.google.firebase.database.FirebaseDatabase.getInstance("https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app")
+                        .getReference("families").child("FAM-8492").child("parentFcmToken").setValue(token)
+                }
+            }
+        }
+
         setContent {
             MaterialTheme {
                 Surface(
