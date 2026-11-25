@@ -26,6 +26,11 @@ jobs:
       - name: Compiler les applications (Enfant et Parent)
         run: ./gradlew assembleDebug
 
+      - name: Configurer l'accès GitHub
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
+
       - name: Créer le Tag de Version
         id: tagger
         run: |
@@ -33,6 +38,8 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           git tag $VERSION_NAME
           git push origin $VERSION_NAME
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Créer la Release GitHub
         uses: softprops/action-gh-release@v2
