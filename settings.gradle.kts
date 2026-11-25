@@ -23,5 +23,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Launcher téléphone enfant"
-include(":app")
+include(":app_enfant")
 include(":app_parent")
