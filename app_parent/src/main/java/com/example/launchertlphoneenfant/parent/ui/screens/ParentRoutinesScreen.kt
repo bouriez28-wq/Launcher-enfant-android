@@ -14,8 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.model.RewardItem
+import com.example.launchertlphoneenfant.parent.model.RoutineFrequency
 import com.example.launchertlphoneenfant.parent.model.RoutineItem
+import com.example.launchertlphoneenfant.parent.model.TimeOfDay
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -25,11 +28,10 @@ import com.google.firebase.database.ValueEventListener
 fun ParentRoutinesScreen(familyCode: String) {
     var allRoutines by remember { mutableStateOf<List<RoutineItem>>(emptyList()) }
     var allRewards by remember { mutableStateOf<List<RewardItem>>(emptyList()) }
-    var selectedTab by remember { mutableIntStateOf(0) } // 0 = Routines, 1 = Magasin
+    var mainTab by remember { mutableIntStateOf(0) } // 0 = Tâches, 1 = Magasin
 
     val database = remember { FirebaseDatabase.getInstance() }
 
-    // Charger les données en direct et initialiser les valeurs par défaut si vide
     LaunchedEffect(familyCode) {
         if (familyCode.isNotBlank()) {
             val familyRef = database.getReference("families").child(familyCode)
@@ -42,13 +44,21 @@ fun ParentRoutinesScreen(familyCode: String) {
                         familyRef.child("routines").setValue(defaults)
                     } else {
                         for (child in snapshot.children) {
+                            val freqStr = child.child("frequency").getValue(String::class.java) ?: RoutineFrequency.DAILY.name
+                            val freq = try { RoutineFrequency.valueOf(freqStr) } catch (e: Exception) { RoutineFrequency.DAILY }
+
+                            val timeStr = child.child("timeOfDay").getValue(String::class.java) ?: TimeOfDay.MORNING.name
+                            val time = try { TimeOfDay.valueOf(timeStr) } catch (e: Exception) { TimeOfDay.MORNING }
+
                             list.add(
                                 RoutineItem(
                                     id = child.child("id").getValue(String::class.java) ?: "",
                                     title = child.child("title").getValue(String::class.java) ?: "",
                                     description = child.child("description").getValue(String::class.java) ?: "",
                                     icon = child.child("icon").getValue(String::class.java) ?: "⭐",
-                                    starsReward = (child.child("starsReward").value as? Long)?.toInt() ?: 1
+                                    starsReward = (child.child("starsReward").value as? Long)?.toInt() ?: 1,
+                                    frequency = freq,
+                                    timeOfDay = time
                                 )
                             )
                         }
@@ -85,17 +95,17 @@ fun ParentRoutinesScreen(familyCode: String) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        TabRow(selectedTabIndex = selectedTab, modifier = Modifier.fillMaxWidth()) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+        TabRow(selectedTabIndex = mainTab, modifier = Modifier.fillMaxWidth()) {
+            Tab(selected = mainTab == 0, onClick = { mainTab = 0 }) {
                 Text("📝 Tâches & Routines", modifier = Modifier.padding(16.dp))
             }
-            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+            Tab(selected = mainTab == 1, onClick = { mainTab = 1 }) {
                 Text("🎁 Magasin de Cadeaux", modifier = Modifier.padding(16.dp))
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (selectedTab == 0) {
+        if (mainTab == 0) {
             ManageRoutinesList(
                 routines = allRoutines,
                 onAddRoutine = { newRoutine ->
@@ -129,32 +139,52 @@ fun ManageRoutinesList(
     onAddRoutine: (RoutineItem) -> Unit,
     onDeleteRoutine: (String) -> Unit
 ) {
+    var subTab by remember { mutableIntStateOf(0) } // 0 = Quotidiennes, 1 = Hebdomadaires, 2 = Mensuelles
     var showAddDialog by remember { mutableStateOf(false) }
 
-    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item {
-            Button(onClick = { showAddDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Text("Ajouter une Nouvelle Tâche")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+    val filteredRoutines = when (subTab) {
+        0 -> routines.filter { it.frequency == RoutineFrequency.DAILY }
+        1 -> routines.filter { it.frequency == RoutineFrequency.WEEKLY }
+        2 -> routines.filter { it.frequency == RoutineFrequency.MONTHLY }
+        else -> routines
+    }
 
-        items(routines) { routine ->
-            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(routine.title, fontWeight = FontWeight.Bold)
-                        if (routine.description.isNotBlank()) {
-                            Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+    Column(modifier = Modifier.fillMaxSize()) {
+        ScrollableTabRow(selectedTabIndex = subTab, modifier = Modifier.fillMaxWidth()) {
+            Tab(selected = subTab == 0, onClick = { subTab = 0 }) { Text("🔄 Quotidiennes", modifier = Modifier.padding(12.dp)) }
+            Tab(selected = subTab == 1, onClick = { subTab = 1 }) { Text("📅 Hebdomadaires", modifier = Modifier.padding(12.dp)) }
+            Tab(selected = subTab == 2, onClick = { subTab = 2 }) { Text("📆 Mensuelles", modifier = Modifier.padding(12.dp)) }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(onClick = { showAddDialog = true }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Text("Ajouter une Tâche (${when(subTab) { 0 -> "Quotidienne"; 1 -> "Hebdomadaire"; else -> "Mensuelle" }})")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(filteredRoutines) { routine ->
+                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                    Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(routine.title, fontWeight = FontWeight.Bold)
+                                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
+                                    Text(routine.timeOfDay.displayName, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                }
+                            }
+                            if (routine.description.isNotBlank()) {
+                                Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                            }
                         }
-                    }
-                    Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = { onDeleteRoutine(routine.id) }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error)
+                        Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { onDeleteRoutine(routine.id) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }
@@ -162,7 +192,12 @@ fun ManageRoutinesList(
     }
 
     if (showAddDialog) {
-        AddRoutineDialog(onDismiss = { showAddDialog = false }, onSave = { r -> onAddRoutine(r); showAddDialog = false })
+        val defaultFreq = when(subTab) {
+            0 -> RoutineFrequency.DAILY
+            1 -> RoutineFrequency.WEEKLY
+            else -> RoutineFrequency.MONTHLY
+        }
+        AddRoutineDialog(defaultFrequency = defaultFreq, onDismiss = { showAddDialog = false }, onSave = { r -> onAddRoutine(r); showAddDialog = false })
     }
 }
 
@@ -178,7 +213,7 @@ fun ManageRewardsList(
         item {
             Button(onClick = { showAddDialog = true }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, contentDescription = null)
-                Text("Ajouter un Nouveau Cadeau")
+                Text("Ajouter un Nouveau Cadeau au Magasin")
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -210,27 +245,47 @@ fun ManageRewardsList(
 }
 
 @Composable
-fun AddRoutineDialog(onDismiss: () -> Unit, onSave: (RoutineItem) -> Unit) {
+fun AddRoutineDialog(defaultFrequency: RoutineFrequency, onDismiss: () -> Unit, onSave: (RoutineItem) -> Unit) {
     var title by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
     var icon by remember { mutableStateOf("⭐") }
     var reward by remember { mutableStateOf("1") }
+    var frequency by remember { mutableStateOf(defaultFrequency) }
+    var timeOfDay by remember { mutableStateOf(TimeOfDay.MORNING) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nouvelle Tâche") },
+        title = { Text("Nouvelle Tâche (${frequency.displayName})") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = icon, onValueChange = { icon = it }, label = { Text("Icône (Emoji ex: 🛏️)") }, singleLine = true)
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Titre") }, singleLine = true)
                 OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description (optionnelle)") })
-                OutlinedTextField(value = reward, onValueChange = { reward = it }, label = { Text("Étoiles à gagner ⭐") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number), singleLine = true)
+
+                Text("Moment de la journée :", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TimeOfDay.entries.forEach { time ->
+                        FilterChip(
+                            selected = timeOfDay == time,
+                            onClick = { timeOfDay = time },
+                            label = { Text(time.displayName, fontSize = 11.sp) }
+                        )
+                    }
+                }
+
+                Text("Étoiles à gagner ⭐ :", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                OutlinedTextField(
+                    value = reward,
+                    onValueChange = { reward = it },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    singleLine = true
+                )
             }
         },
         confirmButton = {
             Button(onClick = {
                 if (title.isNotBlank()) {
-                    onSave(RoutineItem(title = title, description = desc, icon = icon, starsReward = reward.toIntOrNull() ?: 1))
+                    onSave(RoutineItem(title = title, description = desc, icon = icon, starsReward = reward.toIntOrNull() ?: 1, frequency = frequency, timeOfDay = timeOfDay))
                 }
             }) { Text("Enregistrer") }
         },
@@ -247,7 +302,7 @@ fun AddRewardDialog(onDismiss: () -> Unit, onSave: (RewardItem) -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nouveau Cadeau") },
+        title = { Text("Nouveau Cadeau au Magasin") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = icon, onValueChange = { icon = it }, label = { Text("Icône (Emoji ex: 🎮)") }, singleLine = true)
@@ -269,13 +324,13 @@ fun AddRewardDialog(onDismiss: () -> Unit, onSave: (RewardItem) -> Unit) {
 
 fun getDefaultRoutines(): List<RoutineItem> {
     return listOf(
-        RoutineItem(id = "def_r_1", title = "Faire son lit", icon = "🛏️", starsReward = 1),
-        RoutineItem(id = "def_r_2", title = "Brosser ses dents", icon = "🪥", starsReward = 1),
-        RoutineItem(id = "def_r_3", title = "Prendre son petit-déjeuner", icon = "🥣", starsReward = 1),
-        RoutineItem(id = "def_r_4", title = "Faire ses devoirs", icon = "📚", starsReward = 2),
-        RoutineItem(id = "def_r_5", title = "Ranger ses jouets", icon = "🧸", starsReward = 2),
-        RoutineItem(id = "def_r_6", title = "Prendre sa douche", icon = "🚿", starsReward = 1),
-        RoutineItem(id = "def_r_7", title = "Lire une histoire", icon = "📖", starsReward = 1)
+        RoutineItem(id = "def_r_1", title = "Faire son lit", icon = "🛏️", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
+        RoutineItem(id = "def_r_2", title = "Brosser ses dents", icon = "🪥", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
+        RoutineItem(id = "def_r_3", title = "Prendre son petit-déjeuner", icon = "🥣", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
+        RoutineItem(id = "def_r_4", title = "Ranger sa chambre", icon = "🧹", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.WEEKLY, starsReward = 3),
+        RoutineItem(id = "def_r_5", title = "Faire ses devoirs", icon = "📚", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.DAILY, starsReward = 2),
+        RoutineItem(id = "def_r_6", title = "Prendre sa douche", icon = "🚿", timeOfDay = TimeOfDay.EVENING, frequency = RoutineFrequency.DAILY, starsReward = 1),
+        RoutineItem(id = "def_r_7", title = "Grand rangement mensuel", icon = "📦", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.MONTHLY, starsReward = 10)
     )
 }
 
