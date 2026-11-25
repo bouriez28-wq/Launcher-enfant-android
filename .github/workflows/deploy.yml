@@ -49,44 +49,43 @@ jobs:
       - name: Mettre à jour Firebase Database (Alertes Téléphones)
         run: |
           cat << 'EOF' > update_db.js
-          const firebaseAdmin = require("firebase-admin");
-          const admin = firebaseAdmin.credential ? firebaseAdmin : (firebaseAdmin.default || firebaseAdmin);
+          const { initializeApp, cert } = require("firebase-admin/app");
+          const { getDatabase } = require("firebase-admin/database");
           
           const rawCredentials = process.env.FIREBASE_CREDENTIALS;
           const cleaned = rawCredentials ? rawCredentials.trim() : '';
           
           if (!cleaned || !cleaned.startsWith('{')) {
-             console.log("⚠️ FIREBASE_CREDENTIALS absent ou mal formé, premier caractère: " + (cleaned ? cleaned.substring(0, 10) : 'vide'));
+             console.log("⚠️ FIREBASE_CREDENTIALS absent ou mal formé.");
              process.exit(0);
           }
           
           try {
             const serviceAccount = JSON.parse(cleaned);
             const versionNumber = parseInt(process.env.RUN_NUMBER);
-            const versionName = "latest-dev";
             
-            admin.initializeApp({
-              credential: admin.credential.cert(serviceAccount),
+            initializeApp({
+              credential: cert(serviceAccount),
               databaseURL: "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
             });
             
-            const db = admin.database();
+            const db = getDatabase();
             
             async function notifyUpdate(dbPath, driveUrl) {
-              const versionNumber = parseInt(process.env.RUN_NUMBER);
               await db.ref(`app_updates/${dbPath}`).update({
                 downloadUrl: driveUrl,
                 latestVersionCode: versionNumber,
                 latestVersionName: "latest-dev",
                 releaseNotes: "Mise à jour disponible 🎉"
               });
-              console.log(`Database mise à jour avec le lien Google Drive direct pour ${dbPath} !`);
+              console.log(`Database mise à jour avec succès pour ${dbPath} !`);
             }
             
             async function run() {
                try {
                   await notifyUpdate('child', 'https://drive.google.com/uc?export=download&id=1wx_gApYFN9Qzpe2w27OmcK62oNimxbde');
                   await notifyUpdate('parent', 'https://drive.google.com/uc?export=download&id=1K2Ux0Q-6pMzIT2P1DHAokYnIDXHrNZcZ');
+                  console.log("Mise à jour complète effectuée avec succès !");
                   process.exit(0);
                } catch(e) {
                   console.error("Erreur écriture Database:", e);
