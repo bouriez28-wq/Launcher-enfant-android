@@ -1,0 +1,2 @@
+com.example.launchertlphoneenfant.parent
+xml file_paths

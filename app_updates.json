@@ -1,0 +1,16 @@
+{
+  "app_updates": {
+    "child": {
+      "downloadUrl": "https://launcher-enfant.web.app/app-enfant.apk",
+      "latestVersionCode": 1,
+      "latestVersionName": "1.0",
+      "releaseNotes": "Version initiale Launcher Enfant"
+    },
+    "parent": {
+      "downloadUrl": "https://launcher-enfant.web.app/app-parent.apk",
+      "latestVersionCode": 1,
+      "latestVersionName": "1.0",
+      "releaseNotes": "Version initiale Contrôle Parent"
+    }
+  }
+}
