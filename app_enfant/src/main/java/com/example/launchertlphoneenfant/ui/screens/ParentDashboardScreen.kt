@@ -1,6 +1,8 @@
 package com.example.launchertlphoneenfant.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -380,7 +382,24 @@ fun SettingsTab(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
+        // Bouton Quitter le Kiosque TOUT EN HAUT
+        Button(
+            onClick = onExitKiosk,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(Icons.Default.Lock, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Quitter le mode Kiosque (Désépingler)", fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text(
             text = "Synchronisation à Distance (Cloud)",
             style = MaterialTheme.typography.titleLarge,
