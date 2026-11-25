@@ -4,8 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Checklist
@@ -22,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentControlScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentRoutinesScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentStoriesScreen
@@ -54,7 +59,7 @@ class ParentMainActivity : ComponentActivity() {
             if (task.isSuccessful) {
                 val token = task.result
                 if (!token.isNullOrBlank()) {
-                    com.google.firebase.database.FirebaseDatabase.getInstance("https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app")
+                    FirebaseDatabase.getInstance("https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app")
                         .getReference("families").child("FAM-8492").child("parentFcmToken").setValue(token)
                 }
             }
@@ -77,7 +82,18 @@ class ParentMainActivity : ComponentActivity() {
 @Composable
 fun ParentAppNavigation() {
     var selectedTab by remember { mutableIntStateOf(0) }
-    
+    val pagerState = rememberPagerState(pageCount = { 4 })
+
+    LaunchedEffect(selectedTab) {
+        if (pagerState.currentPage != selectedTab) {
+            pagerState.animateScrollToPage(selectedTab)
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        selectedTab = pagerState.currentPage
+    }
+
     // État synchronisé depuis Firebase
     var familyCode by remember { mutableStateOf("FAM-8492") }
     var dailyLimit by remember { mutableIntStateOf(60) }
@@ -112,7 +128,12 @@ fun ParentAppNavigation() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Parent Contrôle", fontWeight = FontWeight.Bold) },
+                title = {
+                    Column {
+                        Text("Parent Contrôle", fontWeight = FontWeight.Bold)
+                        Text("Version v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
@@ -147,32 +168,36 @@ fun ParentAppNavigation() {
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            when (selectedTab) {
-                0 -> ParentControlScreen(
-                    familyCode = familyCode,
-                    onFamilyCodeChange = { familyCode = it },
-                    dailyLimit = dailyLimit,
-                    usedMinutes = usedMinutes,
-                    bonusMinutes = bonusMinutes,
-                    onSetDailyLimit = { limit ->
-                        database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(limit)
-                    },
-                    onAddBonusMinutes = { bonus ->
-                        database.getReference("families").child(familyCode).child("bonusMinutesToday").setValue(bonusMinutes + bonus)
-                    },
-                    onLockDevice = {
-                        database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(0)
-                    },
-                    onUnlockDevice = {
-                        database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(60)
-                    }
-                )
-                1 -> ParentValidationScreen(familyCode = familyCode)
-                2 -> ParentRoutinesScreen(familyCode = familyCode)
-                3 -> ParentStoriesScreen(familyCode = familyCode)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.padding(innerPadding).fillMaxSize()
+        ) { page ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (page) {
+                    0 -> ParentControlScreen(
+                        familyCode = familyCode,
+                        onFamilyCodeChange = { familyCode = it },
+                        dailyLimit = dailyLimit,
+                        usedMinutes = usedMinutes,
+                        bonusMinutes = bonusMinutes,
+                        onSetDailyLimit = { limit ->
+                            database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(limit)
+                        },
+                        onAddBonusMinutes = { bonus ->
+                            database.getReference("families").child(familyCode).child("bonusMinutesToday").setValue(bonusMinutes + bonus)
+                        },
+                        onLockDevice = {
+                            database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(0)
+                        },
+                        onUnlockDevice = {
+                            database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(60)
+                        }
+                    )
+                    1 -> ParentValidationScreen(familyCode = familyCode)
+                    2 -> ParentRoutinesScreen(familyCode = familyCode)
+                    3 -> ParentStoriesScreen(familyCode = familyCode)
+                }
             }
         }
     }
 }
-
