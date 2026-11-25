@@ -49,7 +49,8 @@ jobs:
       - name: Mettre à jour Firebase Database (Alertes Téléphones)
         run: |
           cat << 'EOF' > update_db.js
-          const admin = require("firebase-admin");
+          const firebaseAdmin = require("firebase-admin");
+          const admin = firebaseAdmin.credential ? firebaseAdmin : (firebaseAdmin.default || firebaseAdmin);
           
           const rawCredentials = process.env.FIREBASE_CREDENTIALS;
           const cleaned = rawCredentials ? rawCredentials.trim() : '';
