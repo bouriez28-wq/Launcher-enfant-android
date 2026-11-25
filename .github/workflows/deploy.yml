@@ -83,8 +83,8 @@ jobs:
             
             async function run() {
                try {
-                  await notifyUpdate('child', 'https://drive.google.com/uc?export=download&id=1wx_gApYFN9Qzpe2w27OmcK62oNimxbde');
-                  await notifyUpdate('parent', 'https://drive.google.com/uc?export=download&id=1K2Ux0Q-6pMzIT2P1DHAokYnIDXHrNZcZ');
+                  await notifyUpdate('child', 'https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk');
+                  await notifyUpdate('parent', 'https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk');
                   console.log("Mise à jour complète effectuée avec succès !");
                   process.exit(0);
                } catch(e) {
@@ -93,8 +93,10 @@ jobs:
                }
             }
             run();
-          } catch(e) {
+           } catch(e) {
             console.log("⚠️ Erreur décodage JSON FIREBASE_CREDENTIALS:", e.message);
+            console.log("Longueur reçue:", cleaned ? cleaned.length : 0);
+            console.log("Début du texte:", cleaned ? cleaned.substring(0, 30) : "vide");
             process.exit(0);
           }
           EOF
