@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.launchertlphoneenfant"
-        minSdk = 33
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -19,8 +19,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("signing.jks")
+            storePassword = "android123"
+            keyAlias = "launcherfamily"
+            keyPassword = "android123"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("release")
+        }
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
