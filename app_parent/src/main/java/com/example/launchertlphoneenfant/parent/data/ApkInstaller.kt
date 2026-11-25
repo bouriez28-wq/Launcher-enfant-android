@@ -31,22 +31,44 @@ class ApkInstaller(private val context: Context) {
                 }
             }
 
+            var currentUrl = downloadUrl
+            var connection: HttpURLConnection? = null
+            var responseCode = -1
+            var redirectCount = 0
+
+            // Boucle de redirection pour gérer Google Drive / GitHub HTTPS redirects
+            while (redirectCount < 6) {
+                val url = URL(currentUrl)
+                connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36")
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                connection.instanceFollowRedirects = true
+                connection.connect()
+
+                responseCode = connection.responseCode
+                if (responseCode in listOf(301, 302, 303, 307, 308)) {
+                    val location = connection.getHeaderField("Location")
+                    connection.disconnect()
+                    if (!location.isNullOrBlank()) {
+                        currentUrl = if (location.startsWith("http")) location else URL(url, location).toString()
+                        redirectCount++
+                        continue
+                    }
+                }
+                break
+            }
+
+            if (connection == null || responseCode !in 200..299) {
+                connection?.disconnect()
+                return@withContext false
+            }
+
             val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.cacheDir
             val apkFile = File(downloadsDir, "Parent_Control_update.apk")
             if (apkFile.exists()) {
                 apkFile.delete()
-            }
-
-            val url = URL(downloadUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
-            connection.instanceFollowRedirects = true
-            connection.connect()
-
-            if (connection.responseCode !in 200..299) {
-                return@withContext false
             }
 
             val fileLength = connection.contentLength
