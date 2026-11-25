@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Configuration de Java
         uses: actions/setup-java@v4
@@ -30,37 +32,14 @@ jobs:
       - name: Compiler les applications (Enfant et Parent)
         run: ./gradlew assembleDebug
 
-      - name: Supprimer l'ancienne Release (si existante)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete "latest-dev" --yes || true
-          git push --delete origin "latest-dev" || true
-
-      - name: Créer le Tag de Version
-        id: tagger
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION_NAME="latest-dev"
-          RUN_NUMBER=${{ github.run_number }}
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
-          echo "RUN_NUMBER=$RUN_NUMBER" >> $GITHUB_ENV
-          
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
-          
-          git tag -f $VERSION_NAME
-          git push -f origin $VERSION_NAME
-
-      - name: Publier la Release GitHub
+      - name: Publier la Release GitHub (latest-dev)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest-dev
           name: Dernière Version (Dev)
           draft: false
           prerelease: false
+          make_latest: true
           files: |
             app_enfant/build/outputs/apk/debug/app_enfant-debug.apk
             app_parent/build/outputs/apk/debug/app_parent-debug.apk
@@ -83,7 +62,7 @@ jobs:
           try {
             const serviceAccount = JSON.parse(cleaned);
             const versionNumber = parseInt(process.env.RUN_NUMBER);
-            const versionName = process.env.VERSION_NAME;
+            const versionName = "latest-dev";
             
             admin.initializeApp({
               credential: admin.credential.cert(serviceAccount),
@@ -124,4 +103,3 @@ jobs:
         env:
           FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
           RUN_NUMBER: ${{ github.run_number }}
-          VERSION_NAME: ${{ env.VERSION_NAME }}
