@@ -24,16 +24,18 @@ class ApkInstaller(private val context: Context) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (!context.packageManager.canRequestPackageInstalls()) {
-                    val permIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                        data = Uri.parse("package:${context.packageName}")
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    withContext(Dispatchers.Main) {
+                        val permIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(permIntent)
                     }
-                    context.startActivity(permIntent)
+                    return@withContext false
                 }
             }
 
             var currentUrl = downloadUrl
-            // Bypass page HTML de confirmation de Google Drive pour obtenir directement le binaire APK
             if (currentUrl.contains("drive.google.com") && !currentUrl.contains("confirm=")) {
                 val fileId = if (currentUrl.contains("id=")) currentUrl.substringAfter("id=").substringBefore("&")
                              else currentUrl.substringAfter("/file/d/").substringBefore("/")
@@ -100,7 +102,9 @@ class ApkInstaller(private val context: Context) {
             connection.disconnect()
 
             if (apkFile.exists() && apkFile.length() > 500000 && isApkValidZip(apkFile)) {
-                launchInstaller(apkFile)
+                withContext(Dispatchers.Main) {
+                    launchInstaller(apkFile)
+                }
                 return@withContext true
             } else {
                 return@withContext false
