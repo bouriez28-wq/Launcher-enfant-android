@@ -49,16 +49,11 @@ class ApkInstaller(private val context: Context) {
             }
 
             var currentUrl = downloadUrl
-            if (currentUrl.contains("drive.google.com") && !currentUrl.contains("confirm=")) {
-                val fileId = if (currentUrl.contains("id=")) currentUrl.substringAfter("id=").substringBefore("&")
-                             else currentUrl.substringAfter("/file/d/").substringBefore("/")
-                currentUrl = "https://drive.google.com/uc?export=download&id=$fileId&confirm=t"
-            }
-
             var connection: HttpURLConnection? = null
             var responseCode = -1
             var redirectCount = 0
 
+            // Boucle de redirection HTTP robuste (instanceFollowRedirects = false pour capturer les 302 vers GitHub/S3)
             while (redirectCount < 6) {
                 val url = URL(currentUrl)
                 connection = url.openConnection() as HttpURLConnection
@@ -66,7 +61,7 @@ class ApkInstaller(private val context: Context) {
                 connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36")
                 connection.connectTimeout = 15000
                 connection.readTimeout = 15000
-                connection.instanceFollowRedirects = true
+                connection.instanceFollowRedirects = false
                 connection.connect()
 
                 responseCode = connection.responseCode
