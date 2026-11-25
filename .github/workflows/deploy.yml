@@ -73,13 +73,15 @@ jobs:
           const admin = require("firebase-admin");
           
           const rawCredentials = process.env.FIREBASE_CREDENTIALS;
-          if (!rawCredentials || rawCredentials.trim() === '' || !rawCredentials.startsWith('{')) {
-             console.log("⚠️ FIREBASE_CREDENTIALS absent ou invalide, mise à jour DB ignorée silencieusement.");
+          const cleaned = rawCredentials ? rawCredentials.trim() : '';
+          
+          if (!cleaned || !cleaned.startsWith('{')) {
+             console.log("⚠️ FIREBASE_CREDENTIALS absent ou mal formé, premier caractère: " + (cleaned ? cleaned.substring(0, 10) : 'vide'));
              process.exit(0);
           }
           
           try {
-            const serviceAccount = JSON.parse(rawCredentials);
+            const serviceAccount = JSON.parse(cleaned);
             const versionNumber = parseInt(process.env.RUN_NUMBER);
             const versionName = process.env.VERSION_NAME;
             
@@ -98,7 +100,7 @@ jobs:
                 latestVersionName: versionName,
                 releaseNotes: "Mise à jour automatique disponible 🎉"
               });
-              console.log(`Database mise à jour pour ${dbPath} !`);
+              console.log(`Database mise à jour avec succès pour ${dbPath} !`);
             }
             
             async function run() {
@@ -107,13 +109,13 @@ jobs:
                   await notifyUpdate('parent', 'app_parent-debug.apk');
                   process.exit(0);
                } catch(e) {
-                  console.error("Erreur Database:", e);
+                  console.error("Erreur écriture Database:", e);
                   process.exit(0);
                }
             }
             run();
           } catch(e) {
-            console.log("⚠️ Clé Firebase non valide, mise à jour ignorée.");
+            console.log("⚠️ Erreur décodage JSON FIREBASE_CREDENTIALS:", e.message);
             process.exit(0);
           }
           EOF
