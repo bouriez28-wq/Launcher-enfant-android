@@ -25,9 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -35,12 +33,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.launchertlphoneenfant.parent.service.UpdateCheckWorker
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentHomeScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentRoutinesScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentSettingsScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentStoriesScreen
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 class ParentMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,18 +69,18 @@ class ParentMainActivity : ComponentActivity() {
         }
 
         // Planification de la vérification des mises à jour en arrière-plan (WorkManager - Périodique toutes les 4h)
-        val updateWorkRequest = androidx.work.PeriodicWorkRequestBuilder<com.example.launchertlphoneenfant.parent.service.UpdateCheckWorker>(4, java.util.concurrent.TimeUnit.HOURS)
+        val updateWorkRequest = PeriodicWorkRequestBuilder<UpdateCheckWorker>(4, TimeUnit.HOURS)
             .build()
-        androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "UpdateCheckWork",
-            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.KEEP,
             updateWorkRequest
         )
 
         // Test immédiat au lancement pour valider instantanément la notification de mise à jour
-        val immediateWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.launchertlphoneenfant.parent.service.UpdateCheckWorker>()
+        val immediateWorkRequest = OneTimeWorkRequestBuilder<UpdateCheckWorker>()
             .build()
-        androidx.work.WorkManager.getInstance(this).enqueue(immediateWorkRequest)
+        WorkManager.getInstance(this).enqueue(immediateWorkRequest)
 
         setContent {
             MaterialTheme {
