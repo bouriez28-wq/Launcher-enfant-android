@@ -20,12 +20,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.model.RewardItem
@@ -37,7 +37,6 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import kotlin.math.roundToInt
 
 @Composable
 fun ParentRoutinesScreen(familyCode: String) {
@@ -194,7 +193,7 @@ fun ManageRoutinesList(
 
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (subTab == 1) {
-                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES AVEC DRAG & DROP
+                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES AVEC GLISSEMENT VERTICAL
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
                 val morningList = dailyList.filter { it.timeOfDay == TimeOfDay.MORNING }
@@ -205,33 +204,33 @@ fun ManageRoutinesList(
                 // 1. Matin
                 item { Text("🌅 Matin", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp)) }
                 if (morningList.isEmpty()) {
-                    item { Text("Aucune tâche le matin. (Appui long + glisser haut/bas)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche le matin. (Appui long puis glisser)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
-                    items(morningList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
+                    items(morningList, key = { it.id }) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
 
                 // 2. Après-midi
                 item { Text("☀️ Après-midi", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (afternoonList.isEmpty()) {
-                    item { Text("Aucune tâche l'après-midi. (Appui long + glisser haut/bas)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche l'après-midi. (Appui long puis glisser)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
-                    items(afternoonList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
+                    items(afternoonList, key = { it.id }) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
 
                 // 3. Après école
                 item { Text("🎒 Après l'école", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (afterSchoolList.isEmpty()) {
-                    item { Text("Aucune tâche après l'école. (Appui long + glisser haut/bas)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche après l'école. (Appui long puis glisser)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
-                    items(afterSchoolList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
+                    items(afterSchoolList, key = { it.id }) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
 
                 // 4. Soir
                 item { Text("🌙 Soir", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (eveningList.isEmpty()) {
-                    item { Text("Aucune tâche le soir. (Appui long + glisser haut/bas)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche le soir. (Appui long puis glisser)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
-                    items(eveningList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
+                    items(eveningList, key = { it.id }) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
             } else {
                 val filteredRoutines = when (subTab) {
@@ -241,7 +240,7 @@ fun ManageRoutinesList(
                     4 -> routines.filter { it.frequency == RoutineFrequency.SEASONAL }
                     else -> routines
                 }
-                items(filteredRoutines) { routine ->
+                items(filteredRoutines, key = { it.id }) { routine ->
                     RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime)
                 }
             }
@@ -278,36 +277,47 @@ fun RoutineCard(
     onUpdateRoutineTime: (String, TimeOfDay) -> Unit
 ) {
     val categories = listOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON, TimeOfDay.AFTER_SCHOOL, TimeOfDay.EVENING)
-    var offsetY by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
+
+    val elevation = if (isDragging) 10.dp else 2.dp
+    val scale = if (isDragging) 1.03f else 1.0f
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .offset { IntOffset(0, offsetY.roundToInt()) }
-            .pointerInput(routine.id) {
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationY = offsetY
+            }
+            .pointerInput(routine.id, routine.timeOfDay) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { isDragging = true },
-                    onDragEnd = {
-                        val currentIndex = categories.indexOf(routine.timeOfDay)
-                        // Glissé vers le bas -> catégorie suivante (ex: Matin -> Après-midi)
-                        if (offsetY > 70f && currentIndex < categories.size - 1) {
-                            onUpdateRoutineTime(routine.id, categories[currentIndex + 1])
-                        }
-                        // Glissé vers le haut -> catégorie précédente (ex: Soir -> Après-école)
-                        else if (offsetY < -70f && currentIndex > 0) {
-                            onUpdateRoutineTime(routine.id, categories[currentIndex - 1])
-                        }
+                    onDragStart = {
+                        isDragging = true
                         offsetY = 0f
-                        isDragging = false
-                    },
-                    onDragCancel = {
-                        offsetY = 0f
-                        isDragging = false
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
                         offsetY += dragAmount.y
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        val delta = offsetY
+                        offsetY = 0f
+
+                        val currentIndex = categories.indexOf(routine.timeOfDay)
+                        if (delta < -70f && currentIndex > 0) {
+                            // Glissé vers le haut -> catégorie précédente
+                            onUpdateRoutineTime(routine.id, categories[currentIndex - 1])
+                        } else if (delta > 70f && currentIndex < categories.size - 1) {
+                            // Glissé vers le bas -> catégorie suivante
+                            onUpdateRoutineTime(routine.id, categories[currentIndex + 1])
+                        }
+                    },
+                    onDragCancel = {
+                        offsetY = 0f
+                        isDragging = false
                     }
                 )
             },
@@ -315,7 +325,7 @@ fun RoutineCard(
         colors = CardDefaults.cardColors(
             containerColor = if (isDragging) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 12.dp else 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
     ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
@@ -325,7 +335,7 @@ fun RoutineCard(
                 if (routine.description.isNotBlank()) {
                     Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                 }
-                Text(if (isDragging) "⇄ Glissement en cours..." else "✋ Appui long puis glisser haut/bas", fontSize = 10.sp, color = if (isDragging) MaterialTheme.colorScheme.primary else Color.Gray)
+                Text(if (isDragging) "⇄ Déplacement en cours..." else "✋ Appui long puis glisser haut/bas", fontSize = 10.sp, color = if (isDragging) MaterialTheme.colorScheme.primary else Color.Gray)
             }
             Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
             Spacer(modifier = Modifier.width(8.dp))
