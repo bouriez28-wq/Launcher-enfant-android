@@ -8,7 +8,6 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
-import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
 import com.example.launchertlphoneenfant.parent.BuildConfig
 import com.example.launchertlphoneenfant.parent.ParentMainActivity
@@ -21,17 +20,17 @@ class UpdateCheckWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
-    override suspend fun doWork(): ListenableWorker.Result = withContext(Dispatchers.IO) {
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
             val updateChecker = UpdateChecker()
             val updateInfo = updateChecker.checkCloudUpdate("parent")
             if (updateInfo.hasUpdate && updateInfo.latestVersionCode > BuildConfig.VERSION_CODE) {
                 showUpdateSystemNotification(context, updateInfo.latestVersionName)
             }
-            ListenableWorker.Result.success()
+            Result.success()
         } catch (e: Exception) {
             e.printStackTrace()
-            ListenableWorker.Result.retry()
+            Result.retry()
         }
     }
 
