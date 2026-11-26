@@ -1,5 +1,6 @@
 package com.example.launchertlphoneenfant.parent.data
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +37,7 @@ class UpdateChecker {
         try {
             val db = FirebaseDatabase.getInstance(databaseUrl)
             val snapshot = db.getReference("app_updates").child(appType).get().await()
+            Log.d("UpdateChecker", "Snapshot exists: ${snapshot.exists()}, value: ${snapshot.value}")
 
             if (snapshot.exists()) {
                 val rawCode = snapshot.child("latestVersionCode").value
@@ -53,6 +55,7 @@ class UpdateChecker {
 
                 val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
                 val hasUpdate = latestCode > currentCode
+                Log.d("UpdateChecker", "latestCode: $latestCode, currentCode: $currentCode, hasUpdate: $hasUpdate")
 
                 return@withContext AppUpdateInfo(
                     hasUpdate = hasUpdate,
@@ -64,6 +67,7 @@ class UpdateChecker {
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            Log.e("UpdateChecker", "Error checking update: ${e.message}")
         }
         return@withContext AppUpdateInfo(hasUpdate = false)
     }
