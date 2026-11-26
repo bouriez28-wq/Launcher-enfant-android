@@ -34,20 +34,20 @@ jobs:
         env:
           BUILD_NUMBER: ${{ github.run_number }}
 
-      - name: Générer public/version.json dynamique (Toujours supérieur)
+      - name: Générer public/version.json synchronisé avec le Build (+1 pour test update)
         run: |
           RUN_NUM=${{ github.run_number }}
           BASE_CODE=1000
           APP_CODE=$((BASE_CODE + RUN_NUM))
-          SERVER_CODE=$((APP_CODE + 10))
+          SERVER_CODE=$((APP_CODE + 1))
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           
           cat << EOF > public/version.json
           {
             "latestVersionCode": $SERVER_CODE,
-            "latestVersionName": "2.2.$RUN_NUM",
+            "latestVersionName": "2.2.$SERVER_CODE",
             "downloadUrl": "$PARENT_URL",
-            "releaseNotes": "🎉 Nouvelle version v2.2.$RUN_NUM disponible !\n\n- Mises à jour automatiques et continues"
+            "releaseNotes": "🎉 Nouvelle version v2.2.$SERVER_CODE disponible !\n\n- Amélioration de la stabilité et du glisser-déposer"
           }
           EOF
           echo "version.json généré avec le code serveur $SERVER_CODE (App code: $APP_CODE)"
@@ -67,20 +67,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database (Version cloud toujours supérieure)
+      - name: Mettre à jour Firebase Database (Synchronisation automatique)
         run: |
           RUN_NUM=${{ github.run_number }}
           BASE_CODE=1000
           APP_CODE=$((BASE_CODE + RUN_NUM))
-          SERVER_CODE=$((APP_CODE + 10))
+          SERVER_CODE=$((APP_CODE + 1))
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
           
-          PAYLOAD='{"latestVersionCode": '$SERVER_CODE', "latestVersionName": "2.2.'$RUN_NUM'", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "🎉 Nouvelle version v2.2.'$RUN_NUM' disponible !"}'
-          CHILD_PAYLOAD='{"latestVersionCode": '$SERVER_CODE', "latestVersionName": "2.2.'$RUN_NUM'", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "🎉 Nouvelle version v2.2.'$RUN_NUM' disponible !"}'
+          PAYLOAD='{"latestVersionCode": '$SERVER_CODE', "latestVersionName": "2.2.'$SERVER_CODE'", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "🎉 Nouvelle version v2.2.'$SERVER_CODE' disponible !"}'
+          CHILD_PAYLOAD='{"latestVersionCode": '$SERVER_CODE', "latestVersionName": "2.2.'$SERVER_CODE'", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "🎉 Nouvelle version v2.2.'$SERVER_CODE' disponible !"}'
 
           curl -s -X PATCH -d "$PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/families/FAM-8492/app_update.json"
           curl -s -X PATCH -d "$PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json"
           curl -s -X PATCH -d "$CHILD_PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json"
           
-          echo "Base de données Firebase mise à jour avec la version cloud $SERVER_CODE !"
+          echo "Base de données Firebase mise à jour avec la version $SERVER_CODE !"
