@@ -63,6 +63,9 @@ fun ParentSettingsScreen(
     var childName by remember { mutableStateOf("Mon Champion") }
     var parentPin by remember { mutableStateOf("1234") }
 
+    var familyCodeInput by remember(familyCode) { mutableStateOf(familyCode) }
+    var showFamilyCodeDialog by remember { mutableStateOf(false) }
+
     var showChildNameDialog by remember { mutableStateOf(false) }
     var newChildNameInput by remember { mutableStateOf("") }
 
@@ -95,7 +98,7 @@ fun ParentSettingsScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Appairage Famille
+        // 1. Appairage Famille (avec bouton Valider et confirmation)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -108,12 +111,25 @@ fun ParentSettingsScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = familyCode,
-                    onValueChange = onFamilyCodeChange,
+                    value = familyCodeInput,
+                    onValueChange = { familyCodeInput = it },
                     label = { Text("Code Famille") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        if (familyCodeInput.isNotBlank() && familyCodeInput != familyCode) {
+                            showFamilyCodeDialog = true
+                        } else {
+                            Toast.makeText(context, "Le code famille est identique ou vide", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Valider le Code Famille")
+                }
             }
         }
 
@@ -170,7 +186,7 @@ fun ParentSettingsScreen(
             }
         }
 
-        // 4. Personnalisation Thème & Couleurs (Palettes et clair/sombre)
+        // 4. Personnalisation Thème & Couleurs
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -193,7 +209,7 @@ fun ParentSettingsScreen(
             }
         }
 
-        // 5. Partager l'application avec un QR Code (Double choix Parent / Enfant)
+        // 5. Partager l'application avec un QR Code
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -270,18 +286,46 @@ fun ParentSettingsScreen(
 
     // --- DIALOGS ---
 
-    // 1. Changer le prénom de l'enfant
+    // 0. Confirmation Code Famille
+    if (showFamilyCodeDialog) {
+        AlertDialog(
+            onDismissRequest = { showFamilyCodeDialog = false },
+            title = { Text("Changer de Code Famille ?") },
+            text = { Text("Voulez-vous vraiment valider et basculer vers le code famille \"$familyCodeInput\" ?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onFamilyCodeChange(familyCodeInput.trim().uppercase())
+                        showFamilyCodeDialog = false
+                        Toast.makeText(context, "Code famille mis à jour avec succès !", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("Oui, valider")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    familyCodeInput = familyCode
+                    showFamilyCodeDialog = false
+                }) { Text("Annuler") }
+            }
+        )
+    }
+
+    // 1. Changer le prénom de l'enfant (avec confirmation)
     if (showChildNameDialog) {
         AlertDialog(
             onDismissRequest = { showChildNameDialog = false },
             title = { Text("Changer le prénom de l'enfant") },
             text = {
-                OutlinedTextField(
-                    value = newChildNameInput,
-                    onValueChange = { newChildNameInput = it },
-                    label = { Text("Nouveau prénom") },
-                    singleLine = true
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = newChildNameInput,
+                        onValueChange = { newChildNameInput = it },
+                        label = { Text("Nouveau prénom") },
+                        singleLine = true
+                    )
+                }
             },
             confirmButton = {
                 Button(
@@ -293,7 +337,7 @@ fun ParentSettingsScreen(
                         }
                     }
                 ) {
-                    Text("Enregistrer")
+                    Text("Valider")
                 }
             },
             dismissButton = {
@@ -302,19 +346,21 @@ fun ParentSettingsScreen(
         )
     }
 
-    // 2. Changer le code PIN parent
+    // 2. Changer le code PIN parent (avec confirmation)
     if (showPinDialog) {
         AlertDialog(
             onDismissRequest = { showPinDialog = false },
             title = { Text("Changer le code PIN parent") },
             text = {
-                OutlinedTextField(
-                    value = newPinInput,
-                    onValueChange = { newPinInput = it },
-                    label = { Text("Nouveau code PIN (4 chiffres)") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation()
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = newPinInput,
+                        onValueChange = { newPinInput = it },
+                        label = { Text("Nouveau code PIN (4 chiffres)") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                }
             },
             confirmButton = {
                 Button(
@@ -328,7 +374,7 @@ fun ParentSettingsScreen(
                         }
                     }
                 ) {
-                    Text("Enregistrer")
+                    Text("Valider")
                 }
             },
             dismissButton = {
