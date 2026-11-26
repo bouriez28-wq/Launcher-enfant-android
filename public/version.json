@@ -1,6 +1,6 @@
 {
   "latestVersionCode": 999,
-  "latestVersionName": "2.0",
+  "latestVersionName": "2.1",
   "downloadUrl": "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk",
-  "releaseNotes": "🎉 Nouvelle version majeure v2.0 disponible !\n\n- Glissement vertical des tâches de routine\n- Amélioration des performances et correction de bugs"
+  "releaseNotes": "🎉 Nouvelle version majeure v2.1 disponible !\n\n- Amélioration de l'appui long pour déplacer les tâches\n- Correction de bugs et fluidité accrue"
 }
