@@ -184,7 +184,7 @@ fun ManageRoutinesList(
 
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (subTab == 1) {
-                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES
+                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES SANS BADGE DE TEMPS
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
                 val morningList = dailyList.filter { it.timeOfDay == TimeOfDay.MORNING }
@@ -624,7 +624,7 @@ fun getDefaultRoutines(): List<RoutineItem> {
     return listOf(
         RoutineItem(id = "def_r_1", title = "Faire son lit", icon = "🛏️", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
         RoutineItem(id = "def_r_2", title = "Brosser ses dents", icon = "🪥", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
-        RoutineItem(id = "def_r_3", title = "Goûter et détente", icon = "🍏", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.DAILY, starsReward = 1),
+        RoutineItem(id = "def_r_3", title = "Prendre son petit-déjeuner", icon = "🥣", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
         RoutineItem(id = "def_r_4", title = "Faire ses devoirs", icon = "📚", timeOfDay = TimeOfDay.AFTER_SCHOOL, frequency = RoutineFrequency.DAILY, starsReward = 2),
         RoutineItem(id = "def_r_5", title = "Ranger sa chambre", icon = "🧸", timeOfDay = TimeOfDay.AFTER_SCHOOL, frequency = RoutineFrequency.DAILY, starsReward = 2),
         RoutineItem(id = "def_r_6", title = "Prendre sa douche", icon = "🚿", timeOfDay = TimeOfDay.EVENING, frequency = RoutineFrequency.DAILY, starsReward = 1),
