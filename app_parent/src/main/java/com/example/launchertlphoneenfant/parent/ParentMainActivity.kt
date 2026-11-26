@@ -1,8 +1,10 @@
 package com.example.launchertlphoneenfant.parent
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -83,7 +88,31 @@ class ParentMainActivity : ComponentActivity() {
         WorkManager.getInstance(this).enqueue(immediateWorkRequest)
 
         setContent {
-            MaterialTheme {
+            val prefs = remember { getSharedPreferences("parent_theme_prefs", Context.MODE_PRIVATE) }
+            val colorPalette = prefs.getString("color_palette", "Orange Chaud") ?: "Orange Chaud"
+            val themeMode = prefs.getString("theme_mode", "Système") ?: "Système"
+
+            val darkTheme = when (themeMode) {
+                "Sombre" -> true
+                "Clair" -> false
+                else -> isSystemInDarkTheme()
+            }
+
+            val primaryColor = when (colorPalette) {
+                "Bleu Océan" -> Color(0xFF0288D1)
+                "Vert Forêt" -> Color(0xFF2E7D32)
+                "Violet Magique" -> Color(0xFF7B1FA2)
+                "Rose Doux" -> Color(0xFFC2185B)
+                else -> Color(0xFFFF6D00)
+            }
+
+            val colorScheme = if (darkTheme) {
+                darkColorScheme(primary = primaryColor)
+            } else {
+                lightColorScheme(primary = primaryColor)
+            }
+
+            MaterialTheme(colorScheme = colorScheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

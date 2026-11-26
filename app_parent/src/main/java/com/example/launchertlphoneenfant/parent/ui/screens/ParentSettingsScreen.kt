@@ -1,5 +1,7 @@
 package com.example.launchertlphoneenfant.parent.ui.screens
 
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -49,14 +51,16 @@ fun ParentSettingsScreen(
     val apkInstaller = remember { ApkInstaller(context) }
     val database = remember { FirebaseDatabase.getInstance() }
 
+    val prefs = remember { context.getSharedPreferences("parent_theme_prefs", Context.MODE_PRIVATE) }
+    var selectedThemeMode by remember { mutableStateOf(prefs.getString("theme_mode", "Système") ?: "Système") }
+    var selectedColorPalette by remember { mutableStateOf(prefs.getString("color_palette", "Orange Chaud") ?: "Orange Chaud") }
+
     var updateInfoState by remember { mutableStateOf<AppUpdateInfo?>(null) }
     var downloadProgressState by remember { mutableStateOf<Int?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
 
     var childName by remember { mutableStateOf("Mon Champion") }
     var parentPin by remember { mutableStateOf("1234") }
-    var selectedThemeMode by remember { mutableStateOf("Système") } // Clair, Sombre, Système
-    var selectedSoberTheme by remember { mutableStateOf("Classique Sobre") } // Classique Sobre, Minimaliste, Gris Pro
 
     var showChildNameDialog by remember { mutableStateOf(false) }
     var newChildNameInput by remember { mutableStateOf("") }
@@ -165,7 +169,7 @@ fun ParentSettingsScreen(
             }
         }
 
-        // 4. Personnalisation Thème & Interface (Thèmes sobres, clair/sombre, couleurs)
+        // 4. Personnalisation Thème & Couleurs (Palettes et clair/sombre)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -174,16 +178,16 @@ fun ParentSettingsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Personnalisation de l'Interface & Thèmes", fontWeight = FontWeight.Bold)
+                    Text("Personnalisation de l'Interface & Couleurs", fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Thème actuel : $selectedSoberTheme ($selectedThemeMode)", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Palette : $selectedColorPalette ($selectedThemeMode)", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = { showThemeDialog = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Paramètres de Thèmes & Couleurs")
+                    Text("Changer le thème et les couleurs")
                 }
             }
         }
@@ -332,11 +336,11 @@ fun ParentSettingsScreen(
         )
     }
 
-    // 3. Dialogue Thèmes & Couleurs (Thèmes sobres, clair/sombre)
+    // 3. Dialogue Thèmes & Palettes de couleurs
     if (showThemeDialog) {
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
-            title = { Text("Personnalisation & Thèmes") },
+            title = { Text("Thème & Palette de Couleurs") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Mode d'affichage :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -351,19 +355,19 @@ fun ParentSettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Thème sobre / Professionnel :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Palette de couleurs :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        listOf("Classique Sobre", "Minimaliste Noir & Blanc", "Gris Professionnel", "Bleu Nuit Élégant").forEach { theme ->
+                        listOf("Orange Chaud", "Bleu Océan", "Vert Forêt", "Violet Magique", "Rose Doux").forEach { palette ->
                             Row(
-                                modifier = Modifier.fillMaxWidth().clickable { selectedSoberTheme = theme },
+                                modifier = Modifier.fillMaxWidth().clickable { selectedColorPalette = palette },
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
-                                    selected = selectedSoberTheme == theme,
-                                    onClick = { selectedSoberTheme = theme }
+                                    selected = selectedColorPalette == palette,
+                                    onClick = { selectedColorPalette = palette }
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(theme, fontSize = 13.sp)
+                                Text(palette, fontSize = 13.sp)
                             }
                         }
                     }
@@ -372,15 +376,21 @@ fun ParentSettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        prefs.edit()
+                            .putString("theme_mode", selectedThemeMode)
+                            .putString("color_palette", selectedColorPalette)
+                            .apply()
                         showThemeDialog = false
-                        Toast.makeText(context, "Thème appliqué : $selectedSoberTheme ($selectedThemeMode)", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Thème appliqué avec succès !", Toast.LENGTH_SHORT).show()
+                        // Redémarrer l'activité pour appliquer le thème instantanément
+                        (context as? Activity)?.recreate()
                     }
                 ) {
                     Text("Appliquer")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showThemeDialog = false }) { Text("Fermer") }
+                TextButton(onClick = { showThemeDialog = false }) { Text("Annuler") }
             }
         )
     }
