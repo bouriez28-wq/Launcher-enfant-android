@@ -30,6 +30,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
@@ -44,6 +46,9 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.launchertlphoneenfant.parent.data.ApkInstaller
+import com.example.launchertlphoneenfant.parent.data.AppUpdateInfo
+import com.example.launchertlphoneenfant.parent.data.UpdateChecker
+import com.example.launchertlphoneenfant.parent.data.UpdateDialog
 import com.example.launchertlphoneenfant.parent.service.UpdateCheckWorker
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentHomeScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentRoutinesScreen
@@ -147,11 +152,25 @@ class ParentMainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParentAppNavigation() {
+    val context = LocalContext.current
     val pagerState = rememberPagerState(pageCount = { 4 })
     val coroutineScope = rememberCoroutineScope()
 
     // État synchronisé depuis Firebase
     var familyCode by remember { mutableStateOf("FAM-8492") }
+
+    // Vérification automatique des mises à jour à l'ouverture de l'application
+    var updateInfoState by remember { mutableStateOf<AppUpdateInfo?>(null) }
+    var downloadProgressState by remember { mutableStateOf<Int?>(null) }
+    val updateChecker = remember { UpdateChecker() }
+    val apkInstaller = remember { ApkInstaller(context) }
+
+    LaunchedEffect(Unit) {
+        val info = updateChecker.checkCloudUpdate("parent")
+        if (info.hasUpdate) {
+            updateInfoState = info
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -212,5 +231,21 @@ fun ParentAppNavigation() {
                 }
             }
         }
+    }
+
+    // Pop-up automatique de mise à jour si disponible au démarrage
+    updateInfoState?.let { updateInfo ->
+        UpdateDialog(
+            updateInfo = updateInfo,
+            downloadProgress = downloadProgressState,
+            onDismiss = { updateInfoState = null },
+            onDownloadClick = { downloadUrl ->
+                coroutineScope.launch {
+                    apkInstaller.downloadAndInstallApk(downloadUrl) { progress ->
+                        downloadProgressState = progress
+                    }
+                }
+            }
+        )
     }
 }
