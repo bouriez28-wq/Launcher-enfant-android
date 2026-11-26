@@ -200,7 +200,7 @@ fun ParentHomeScreen(
             }
         }
 
-        // 2. Statistiques de progression (Identiques à Routinercompense avec réinitialisation complète)
+        // 2. Statistiques de progression
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -326,16 +326,18 @@ fun ParentHomeScreen(
             }
         }
 
-        // 3. Tâches en attente de validation
-        if (pendingTasks.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "⏳ Tâches en attente de validation (${pendingTasks.size})", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.height(8.dp))
+        // 3. Tâches en attente de validation (Toujours visible avec état vide propre)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(text = "⏳ Tâches en attente de validation (${pendingTasks.size})", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(8.dp))
+                if (pendingTasks.isEmpty()) {
+                    Text("✅ Aucune tâche en attente pour le moment.", fontSize = 13.sp, color = Color.Gray)
+                } else {
                     pendingTasks.forEach { task ->
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(8.dp)) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -350,7 +352,6 @@ fun ParentHomeScreen(
                                         val familyRef = database.getReference("families").child(familyCode)
                                         familyRef.child("totalStars").setValue(totalStars + task.starsReward)
 
-                                        // Mettre à jour les étoiles de la semaine pour le jour actuel
                                         val cal = java.util.Calendar.getInstance()
                                         val calDay = cal.get(java.util.Calendar.DAY_OF_WEEK)
                                         val dayIndex = if (calDay == java.util.Calendar.SUNDAY) 6 else calDay - 2
@@ -374,16 +375,18 @@ fun ParentHomeScreen(
             }
         }
 
-        // 4. Récompenses en attente de validation
-        if (pendingRewards.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "🎁 Récompenses demandées (${pendingRewards.size})", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
+        // 4. Récompenses en attente de validation (Toujours visible avec état vide propre)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(text = "🎁 Récompenses demandées (${pendingRewards.size})", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                if (pendingRewards.isEmpty()) {
+                    Text("✨ Aucune récompense en attente de validation.", fontSize = 13.sp, color = Color.Gray)
+                } else {
                     pendingRewards.forEach { claim ->
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(8.dp)) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -523,7 +526,7 @@ fun ParentHomeScreen(
         )
     }
 
-    // Dialogue confirmation réinitialisation statistiques (avec réinitialisation des étoiles de la semaine et des routines)
+    // Dialogue confirmation réinitialisation statistiques
     if (showResetStatsDialog) {
         AlertDialog(
             onDismissRequest = { showResetStatsDialog = false },
