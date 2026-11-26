@@ -54,3 +54,12 @@ data class RewardClaimHistory(
     val timestamp: Long = System.currentTimeMillis(),
     val isPendingApproval: Boolean = true
 )
+
+data class StickerMessage(
+    val id: String = UUID.randomUUID().toString(),
+    val icon: String = "⭐",
+    val title: String = "",
+    val message: String = "",
+    val timestamp: Long = System.currentTimeMillis(),
+    val isReadByChild: Boolean = false
+)

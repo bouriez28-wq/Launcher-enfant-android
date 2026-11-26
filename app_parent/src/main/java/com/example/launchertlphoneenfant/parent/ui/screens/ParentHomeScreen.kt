@@ -2,57 +2,50 @@ package com.example.launchertlphoneenfant.parent.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.launchertlphoneenfant.parent.data.ApkInstaller
-import com.example.launchertlphoneenfant.parent.data.AppUpdateInfo
-import com.example.launchertlphoneenfant.parent.data.UpdateChecker
-import com.example.launchertlphoneenfant.parent.data.UpdateDialog
+import com.example.launchertlphoneenfant.parent.model.RewardClaimHistory
+import com.example.launchertlphoneenfant.parent.model.RoutineItem
+import com.example.launchertlphoneenfant.parent.model.StickerMessage
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import kotlinx.coroutines.launch
 
 @Composable
 fun ParentHomeScreen(
-    familyCode: String,
-    onFamilyCodeChange: (String) -> Unit
+    familyCode: String
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val updateChecker = remember { UpdateChecker() }
-    val apkInstaller = remember { ApkInstaller(context) }
-
-    var updateInfoState by remember { mutableStateOf<AppUpdateInfo?>(null) }
-    var downloadProgressState by remember { mutableStateOf<Int?>(null) }
-    var isCheckingUpdate by remember { mutableStateOf(false) }
-
     var totalStars by remember { mutableIntStateOf(0) }
     var childName by remember { mutableStateOf("Mon Champion") }
-    var dailyLimit by remember { mutableIntStateOf(60) }
-    var bonusMinutes by remember { mutableIntStateOf(0) }
-    var usedMinutes by remember { mutableIntStateOf(0) }
+    var pendingTasks by remember { mutableStateOf<List<RoutineItem>>(emptyList()) }
+    var pendingRewards by remember { mutableStateOf<List<RewardClaimHistory>>(emptyList()) }
+    var allRoutines by remember { mutableStateOf<List<RoutineItem>>(emptyList()) }
+
+    var showResetStarsDialog by remember { mutableStateOf(false) }
+    var sentStickerMsg by remember { mutableStateOf<String?>(null) }
 
     val database = remember { FirebaseDatabase.getInstance() }
 
-    // Synchronisation en direct avec Firebase pour le foyer
+    // Synchronisation en direct avec Firebase
     LaunchedEffect(familyCode) {
         if (familyCode.isNotBlank()) {
             val familyRef = database.getReference("families").child(familyCode)
@@ -62,15 +55,62 @@ fun ParentHomeScreen(
                     if (snapshot.exists()) {
                         totalStars = (snapshot.child("totalStars").value as? Long)?.toInt() ?: 0
                         childName = (snapshot.child("childName").value as? String) ?: "Mon Champion"
-                        dailyLimit = (snapshot.child("dailyLimitMinutes").value as? Long)?.toInt() ?: 60
-                        bonusMinutes = (snapshot.child("bonusMinutesToday").value as? Long)?.toInt() ?: 0
-                        usedMinutes = (snapshot.child("usedMinutesToday").value as? Long)?.toInt() ?: 0
                     }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+
+            familyRef.child("routines").addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val list = mutableListOf<RoutineItem>()
+                    val pending = mutableListOf<RoutineItem>()
+                    for (child in snapshot.children) {
+                        val item = RoutineItem(
+                            id = child.child("id").getValue(String::class.java) ?: "",
+                            title = child.child("title").getValue(String::class.java) ?: "",
+                            description = child.child("description").getValue(String::class.java) ?: "",
+                            icon = child.child("icon").getValue(String::class.java) ?: "⭐",
+                            starsReward = (child.child("starsReward").value as? Long)?.toInt() ?: 1,
+                            isCompleted = child.child("isCompleted").getValue(Boolean::class.java) ?: false,
+                            isPendingValidation = child.child("isPendingValidation").getValue(Boolean::class.java) ?: false
+                        )
+                        list.add(item)
+                        if (item.isPendingValidation) {
+                            pending.add(item)
+                        }
+                    }
+                    allRoutines = list
+                    pendingTasks = pending
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+
+            familyRef.child("rewardHistory").addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val list = mutableListOf<RewardClaimHistory>()
+                    for (child in snapshot.children) {
+                        val history = RewardClaimHistory(
+                            id = child.child("id").getValue(String::class.java) ?: "",
+                            rewardTitle = child.child("rewardTitle").getValue(String::class.java) ?: "",
+                            rewardIcon = child.child("rewardIcon").getValue(String::class.java) ?: "🎁",
+                            starCost = (child.child("starCost").value as? Long)?.toInt() ?: 0,
+                            timestamp = child.child("timestamp").getValue(Long::class.java) ?: System.currentTimeMillis(),
+                            isPendingApproval = child.child("isPendingApproval").getValue(Boolean::class.java) ?: true
+                        )
+                        if (history.isPendingApproval) {
+                            list.add(history)
+                        }
+                    }
+                    pendingRewards = list
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
         }
     }
+
+    val completedToday = allRoutines.count { it.isCompleted }
+    val totalToday = allRoutines.size
+    val progress = if (totalToday > 0) completedToday.toFloat() / totalToday else 0f
 
     Column(
         modifier = Modifier
@@ -79,7 +119,7 @@ fun ParentHomeScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // En-tête Résumé & Étoiles
+        // 1. Solde d'étoiles & boutons de gestion
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -89,7 +129,7 @@ fun ParentHomeScreen(
                 modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(text = "🌟 Espace de $childName", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(text = "⭐ Solde de $childName", fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 Spacer(modifier = Modifier.height(12.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
@@ -104,7 +144,7 @@ fun ParentHomeScreen(
                         Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(36.dp))
                         Column {
                             Text(text = "$totalStars étoiles", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
-                            Text(text = "Solde actuel de l'enfant", fontSize = 12.sp, color = Color.Gray)
+                            Text(text = "Points de fidélité et efforts", fontSize = 12.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -118,7 +158,7 @@ fun ParentHomeScreen(
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("+1 Étoile ⭐")
+                        Text("+1 ⭐")
                     }
                     Button(
                         onClick = {
@@ -128,157 +168,186 @@ fun ParentHomeScreen(
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
                     ) {
-                        Text("-1 Étoile")
+                        Text("-1 ⭐")
                     }
                 }
-            }
-        }
-
-        // Appairage Code Famille
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Cloud, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Appareil Enfant Lié", fontWeight = FontWeight.Bold)
-                }
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = familyCode,
-                    onValueChange = onFamilyCodeChange,
-                    label = { Text("Code Famille") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                TextButton(onClick = { showResetStarsDialog = true }) {
+                    Text("🔄 Réinitialiser le solde à 0 ⭐", color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                }
             }
         }
 
-        // Temps d'écran & Bonus
+        // 2. Statistiques de progression
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("⏱️ Temps d'écran aujourd'hui :", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "$usedMinutes min consommées / ${dailyLimit + bonusMinutes} min autorisées",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Ajouter du temps bonus :")
+                Text(text = "📊 Statistiques de progression", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            val ref = database.getReference("families").child(familyCode)
-                            ref.child("bonusMinutesToday").setValue(bonusMinutes + 15)
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Text("+15m")
-                    }
-                    Button(
-                        onClick = {
-                            val ref = database.getReference("families").child(familyCode)
-                            ref.child("bonusMinutesToday").setValue(bonusMinutes + 30)
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Text("+30m")
+                Text(text = "Tâches accomplies aujourd'hui : $completedToday / $totalToday", fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
+                )
+            }
+        }
+
+        // 3. Tâches en attente de validation
+        if (pendingTasks.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "⏳ Tâches en attente de validation (${pendingTasks.size})", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    pendingTasks.forEach { task ->
+                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(8.dp)) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(task.icon, fontSize = 24.sp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(task.title, fontWeight = FontWeight.Bold)
+                                    Text("+${task.starsReward} étoile(s) à valider", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                                }
+                                Button(
+                                    onClick = {
+                                        val familyRef = database.getReference("families").child(familyCode)
+                                        familyRef.child("totalStars").setValue(totalStars + task.starsReward)
+                                        val updated = allRoutines.map { if (it.id == task.id) it.copy(isPendingValidation = false, isCompleted = true) else it }
+                                        familyRef.child("routines").setValue(updated)
+                                        Toast.makeText(context, "Tâche validée ! +${task.starsReward} ⭐", Toast.LENGTH_SHORT).show()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                                ) {
+                                    Text("Valider")
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Verrouillage d'urgence
+        // 4. Récompenses en attente de validation
+        if (pendingRewards.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "🎁 Récompenses demandées (${pendingRewards.size})", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    pendingRewards.forEach { claim ->
+                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(8.dp)) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(claim.rewardIcon, fontSize = 24.sp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(claim.rewardTitle, fontWeight = FontWeight.Bold)
+                                    Text("Coût : ${claim.starCost} ⭐", color = Color.Gray, fontSize = 12.sp)
+                                }
+                                Button(
+                                    onClick = {
+                                        val familyRef = database.getReference("families").child(familyCode)
+                                        familyRef.child("rewardHistory").child(claim.id).child("isPendingApproval").setValue(false)
+                                        Toast.makeText(context, "Cadeau approuvé !", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    Text("Approuver")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Envoyer un sticker "Bon Point"
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("🛑 Action d'urgence", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                Text(text = "🌟 Envoyer un sticker \"Bon Point\"", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(text = "Un clic envoie un sticker festif instantanément sur l'écran de l'enfant !", fontSize = 12.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            val ref = database.getReference("families").child(familyCode)
-                            ref.child("dailyLimitMinutes").setValue(0)
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Icon(Icons.Default.Block, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("BLOQUER")
-                    }
-                    Button(
-                        onClick = {
-                            val ref = database.getReference("families").child(familyCode)
-                            ref.child("dailyLimitMinutes").setValue(60)
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Icon(Icons.Default.LockOpen, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("DÉBLOQUER")
+
+                val stickerList = listOf(
+                    Triple("🌟", "Super travail !", "Tu as assuré aujourd'hui, continue comme ça !"),
+                    Triple("🎉", "Bravo champion !", "Félicitations pour tes efforts !"),
+                    Triple("🏆", "Le meilleur !", "Tu es le champion de la maison !"),
+                    Triple("🚀", "En route vers la victoire !", "Rien ne t'arrête !")
+                )
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.height(180.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(stickerList) { (icon, title, msg) ->
+                        OutlinedCard(
+                            onClick = {
+                                val stickerId = database.getReference("families").child(familyCode).child("stickers").push().key ?: java.util.UUID.randomUUID().toString()
+                                val sticker = StickerMessage(id = stickerId, icon = icon, title = title, message = msg)
+                                database.getReference("families").child(familyCode).child("stickers").child(stickerId).setValue(sticker)
+                                sentStickerMsg = "Sticker \"$title\" envoyé à $childName ! 🎉"
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(icon, fontSize = 32.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, textAlign = TextAlign.Center)
+                            }
+                        }
                     }
                 }
             }
-        }
-
-        // Vérification de mise à jour
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            enabled = !isCheckingUpdate,
-            onClick = {
-                isCheckingUpdate = true
-                coroutineScope.launch {
-                    val info = updateChecker.checkCloudUpdate("parent")
-                    isCheckingUpdate = false
-                    if (info.hasUpdate) {
-                        updateInfoState = info
-                    } else {
-                        Toast.makeText(context, "Vous utilisez déjà la dernière version de l'application !", Toast.LENGTH_LONG).show()
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-        ) {
-            Icon(Icons.Default.Cloud, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(if (isCheckingUpdate) "Vérification en cours..." else "Vérifier les Mises à Jour (Parent)")
         }
     }
 
-    // Pop-up de mise à jour si disponible
-    updateInfoState?.let { updateInfo ->
-        UpdateDialog(
-            updateInfo = updateInfo,
-            downloadProgress = downloadProgressState,
-            onDismiss = { updateInfoState = null },
-            onDownloadClick = { downloadUrl ->
-                coroutineScope.launch {
-                    apkInstaller.downloadAndInstallApk(downloadUrl) { progress ->
-                        downloadProgressState = progress
-                    }
+    // Dialogue confirmation réinitialisation étoiles
+    if (showResetStarsDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetStarsDialog = false },
+            title = { Text("Réinitialiser le solde à 0 ⭐ ?") },
+            text = { Text("Voulez-vous vraiment remettre les étoiles de $childName à 0 ?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        database.getReference("families").child(familyCode).child("totalStars").setValue(0)
+                        showResetStarsDialog = false
+                        Toast.makeText(context, "Solde réinitialisé à 0", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Oui, réinitialiser")
                 }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetStarsDialog = false }) { Text("Annuler") }
+            }
+        )
+    }
+
+    // Dialogue sticker envoyé
+    sentStickerMsg?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { sentStickerMsg = null },
+            title = { Text("Sticker envoyé 💌", fontWeight = FontWeight.Bold) },
+            text = { Text(msg) },
+            confirmButton = {
+                Button(onClick = { sentStickerMsg = null }) { Text("Super !") }
             }
         )
     }

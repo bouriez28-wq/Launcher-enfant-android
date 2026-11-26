@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentHomeScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentRoutinesScreen
+import com.example.launchertlphoneenfant.parent.ui.screens.ParentSettingsScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentStoriesScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentValidationScreen
 import com.google.firebase.database.DataSnapshot
@@ -82,7 +84,7 @@ class ParentMainActivity : ComponentActivity() {
 @Composable
 fun ParentAppNavigation() {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val pagerState = rememberPagerState(pageCount = { 4 })
+    val pagerState = rememberPagerState(pageCount = { 5 })
 
     LaunchedEffect(selectedTab) {
         if (pagerState.currentPage != selectedTab) {
@@ -165,6 +167,12 @@ fun ParentAppNavigation() {
                     icon = { Icon(Icons.Default.LibraryBooks, contentDescription = "Histoires") },
                     label = { Text("Histoires") }
                 )
+                NavigationBarItem(
+                    selected = selectedTab == 4,
+                    onClick = { selectedTab = 4 },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Paramètres") },
+                    label = { Text("Paramètres") }
+                )
             }
         }
     ) { innerPadding ->
@@ -174,13 +182,14 @@ fun ParentAppNavigation() {
         ) { page ->
             Box(modifier = Modifier.fillMaxSize()) {
                 when (page) {
-                    0 -> ParentHomeScreen(
-                        familyCode = familyCode,
-                        onFamilyCodeChange = { familyCode = it }
-                    )
+                    0 -> ParentHomeScreen(familyCode = familyCode)
                     1 -> ParentValidationScreen(familyCode = familyCode)
                     2 -> ParentRoutinesScreen(familyCode = familyCode)
                     3 -> ParentStoriesScreen(familyCode = familyCode)
+                    4 -> ParentSettingsScreen(
+                        familyCode = familyCode,
+                        onFamilyCodeChange = { familyCode = it }
+                    )
                 }
             }
         }
