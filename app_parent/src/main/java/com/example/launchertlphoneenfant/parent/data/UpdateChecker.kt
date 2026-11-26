@@ -47,13 +47,12 @@ class UpdateChecker {
             }
         }
 
-        // Fallback de secours infaillible garanti à 100%
         return@withContext AppUpdateInfo(
-            hasUpdate = true,
+            hasUpdate = false,
             latestVersionName = "2.2",
             latestVersionCode = 1001,
-            releaseNotes = "🎉 Nouvelle version majeure v2.2 (build 0.01) disponible !\n\n- Amélioration de l'appui long pour déplacer les tâches\n- Stabilité et performances accrues",
-            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+            releaseNotes = "",
+            downloadUrl = ""
         )
     }
 
@@ -63,8 +62,8 @@ class UpdateChecker {
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36")
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
+            connection.connectTimeout = 8000
+            connection.readTimeout = 8000
             connection.instanceFollowRedirects = true
 
             val code = connection.responseCode
@@ -93,7 +92,8 @@ class UpdateChecker {
                 val downloadUrl = dataObj.optString("downloadUrl", "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk")
 
                 val currentVersionCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
-                val hasUpdate = latestVersionCode > currentVersionCode || true // Garanti pour test
+                // Comparaison stricte normale : si la version du serveur est supérieure à l'app installée
+                val hasUpdate = latestVersionCode > currentVersionCode
 
                 Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, current=$currentVersionCode, hasUpdate=$hasUpdate")
 

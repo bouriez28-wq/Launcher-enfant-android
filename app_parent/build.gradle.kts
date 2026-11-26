@@ -13,8 +13,8 @@ android {
         applicationId = "com.example.launchertlphoneenfant.parent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 999
-        versionName = "2.1"
+        versionCode = 1001
+        versionName = "2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
