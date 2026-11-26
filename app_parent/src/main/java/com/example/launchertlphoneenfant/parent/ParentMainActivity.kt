@@ -25,7 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,7 +64,7 @@ class ParentMainActivity : ComponentActivity() {
             }
         }
 
-        // Planification de la vérification des mises à jour en arrière-plan (WorkManager)
+        // Planification de la vérification des mises à jour en arrière-plan (WorkManager - Périodique toutes les 4h)
         val updateWorkRequest = androidx.work.PeriodicWorkRequestBuilder<com.example.launchertlphoneenfant.parent.service.UpdateCheckWorker>(4, java.util.concurrent.TimeUnit.HOURS)
             .build()
         androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
@@ -70,6 +72,11 @@ class ParentMainActivity : ComponentActivity() {
             androidx.work.ExistingPeriodicWorkPolicy.KEEP,
             updateWorkRequest
         )
+
+        // Test immédiat au lancement pour valider instantanément la notification de mise à jour
+        val immediateWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.launchertlphoneenfant.parent.service.UpdateCheckWorker>()
+            .build()
+        androidx.work.WorkManager.getInstance(this).enqueue(immediateWorkRequest)
 
         setContent {
             MaterialTheme {
@@ -91,7 +98,7 @@ fun ParentAppNavigation() {
     val coroutineScope = rememberCoroutineScope()
 
     // État synchronisé depuis Firebase
-    var familyCode by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("FAM-8492") }
+    var familyCode by remember { mutableStateOf("FAM-8492") }
 
     Scaffold(
         topBar = {
