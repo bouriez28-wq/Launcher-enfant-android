@@ -25,11 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +38,7 @@ import com.example.launchertlphoneenfant.parent.ui.screens.ParentRoutinesScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentSettingsScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentStoriesScreen
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.launch
 
 class ParentMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,21 +78,11 @@ class ParentMainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParentAppNavigation() {
-    var selectedTab by remember { mutableIntStateOf(0) }
     val pagerState = rememberPagerState(pageCount = { 4 })
-
-    LaunchedEffect(selectedTab) {
-        if (pagerState.currentPage != selectedTab) {
-            pagerState.animateScrollToPage(selectedTab)
-        }
-    }
-
-    LaunchedEffect(pagerState.currentPage) {
-        selectedTab = pagerState.currentPage
-    }
+    val coroutineScope = rememberCoroutineScope()
 
     // État synchronisé depuis Firebase
-    var familyCode by remember { mutableStateOf("FAM-8492") }
+    var familyCode by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("FAM-8492") }
 
     Scaffold(
         topBar = {
@@ -111,26 +101,26 @@ fun ParentAppNavigation() {
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    selected = pagerState.currentPage == 0,
+                    onClick = { coroutineScope.launch { pagerState.animateScrollToPage(0) } },
                     icon = { Icon(Icons.Default.Dashboard, contentDescription = "Accueil") },
                     label = { Text("Accueil") }
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
+                    selected = pagerState.currentPage == 1,
+                    onClick = { coroutineScope.launch { pagerState.animateScrollToPage(1) } },
                     icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "Routines") },
                     label = { Text("Routines") }
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
+                    selected = pagerState.currentPage == 2,
+                    onClick = { coroutineScope.launch { pagerState.animateScrollToPage(2) } },
                     icon = { Icon(Icons.Default.LibraryBooks, contentDescription = "Histoires") },
                     label = { Text("Histoires") }
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
+                    selected = pagerState.currentPage == 3,
+                    onClick = { coroutineScope.launch { pagerState.animateScrollToPage(3) } },
                     icon = { Icon(Icons.Default.Settings, contentDescription = "Paramètres") },
                     label = { Text("Paramètres") }
                 )

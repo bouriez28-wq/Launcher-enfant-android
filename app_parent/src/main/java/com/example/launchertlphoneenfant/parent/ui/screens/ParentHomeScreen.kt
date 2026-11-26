@@ -40,6 +40,7 @@ fun ParentHomeScreen(
     var pendingTasks by remember { mutableStateOf<List<RoutineItem>>(emptyList()) }
     var pendingRewards by remember { mutableStateOf<List<RewardClaimHistory>>(emptyList()) }
     var allRoutines by remember { mutableStateOf<List<RoutineItem>>(emptyList()) }
+    var weeklyStars by remember { mutableStateOf(listOf(0, 0, 0, 0, 0, 0, 0)) }
 
     var showResetStarsDialog by remember { mutableStateOf(false) }
     var showResetStatsDialog by remember { mutableStateOf(false) }
@@ -90,6 +91,17 @@ fun ParentHomeScreen(
                     }
                     allRoutines = list
                     pendingTasks = pending
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+
+            familyRef.child("weeklyStars").addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val list = mutableListOf(0, 0, 0, 0, 0, 0, 0)
+                    for (i in 0..6) {
+                        list[i] = (snapshot.child(i.toString()).value as? Long)?.toInt() ?: 0
+                    }
+                    weeklyStars = list
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
@@ -188,7 +200,7 @@ fun ParentHomeScreen(
             }
         }
 
-        // 2. Statistiques de progression (Identiques à Routinercompense)
+        // 2. Statistiques de progression (Identiques à Routinercompense avec réinitialisation complète)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -271,7 +283,6 @@ fun ParentHomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val daysOfWeekLabels = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
-                val weeklyStars = listOf(2, 4, 3, 5, totalStars.coerceAtMost(10), 0, 0) // Simulation graphique des 7 jours
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -279,7 +290,7 @@ fun ParentHomeScreen(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     daysOfWeekLabels.forEachIndexed { idx, dayName ->
-                        val dayStars = weeklyStars[idx]
+                        val dayStars = weeklyStars.getOrElse(idx) { 0 }
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Bottom
@@ -338,6 +349,16 @@ fun ParentHomeScreen(
                                     onClick = {
                                         val familyRef = database.getReference("families").child(familyCode)
                                         familyRef.child("totalStars").setValue(totalStars + task.starsReward)
+
+                                        // Mettre à jour les étoiles de la semaine pour le jour actuel
+                                        val cal = java.util.Calendar.getInstance()
+                                        val calDay = cal.get(java.util.Calendar.DAY_OF_WEEK)
+                                        val dayIndex = if (calDay == java.util.Calendar.SUNDAY) 6 else calDay - 2
+                                        if (dayIndex in 0..6) {
+                                            val currentDayStars = weeklyStars.getOrElse(dayIndex) { 0 }
+                                            familyRef.child("weeklyStars").child(dayIndex.toString()).setValue(currentDayStars + task.starsReward)
+                                        }
+
                                         val updated = allRoutines.map { if (it.id == task.id) it.copy(isPendingValidation = false, isCompleted = true) else it }
                                         familyRef.child("routines").setValue(updated)
                                         Toast.makeText(context, "Tâche validée ! +${task.starsReward} ⭐", Toast.LENGTH_SHORT).show()
@@ -502,18 +523,19 @@ fun ParentHomeScreen(
         )
     }
 
-    // Dialogue confirmation réinitialisation statistiques
+    // Dialogue confirmation réinitialisation statistiques (avec réinitialisation des étoiles de la semaine et des routines)
     if (showResetStatsDialog) {
         AlertDialog(
             onDismissRequest = { showResetStatsDialog = false },
             title = { Text("Réinitialiser les statistiques ?") },
-            text = { Text("Voulez-vous vraiment réinitialiser toutes les statistiques de progression à zéro ?") },
+            text = { Text("Voulez-vous vraiment réinitialiser toutes les statistiques de progression et les étoiles de la semaine à zéro ?") },
             confirmButton = {
                 Button(
                     onClick = {
                         val familyRef = database.getReference("families").child(familyCode)
                         val resetRoutines = allRoutines.map { it.copy(isCompleted = false, isPendingValidation = false) }
                         familyRef.child("routines").setValue(resetRoutines)
+                        familyRef.child("weeklyStars").setValue(listOf(0, 0, 0, 0, 0, 0, 0))
                         showResetStatsDialog = false
                         Toast.makeText(context, "Statistiques réinitialisées", Toast.LENGTH_SHORT).show()
                     },
