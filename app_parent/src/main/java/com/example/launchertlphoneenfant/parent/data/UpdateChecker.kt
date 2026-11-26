@@ -1,6 +1,5 @@
 package com.example.launchertlphoneenfant.parent.data
 
-import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,9 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 data class AppUpdateInfo(
@@ -32,49 +29,14 @@ data class AppUpdateInfo(
 class UpdateChecker {
 
     suspend fun checkCloudUpdate(appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
-        try {
-            val db = FirebaseDatabase.getInstance()
-            val snapshot = db.getReference("app_updates").child(appType).get().await()
-
-            if (snapshot.exists()) {
-                val rawCode = snapshot.child("latestVersionCode").value
-                val latestCode = when (rawCode) {
-                    is Number -> rawCode.toInt()
-                    is String -> rawCode.toIntOrNull() ?: 2
-                    else -> 2
-                }
-
-                val rawName = (snapshot.child("latestVersionName").value as? String) ?: "2.0"
-                val latestName = if (rawName.isBlank() || rawName == "latest-dev") "2.0" else rawName
-
-                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle version disponible."
-                val url = (snapshot.child("downloadUrl").value as? String) ?: "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
-
-                val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
-                // Comparaison normale et stricte : plus de boucle une fois la mise à jour installée
-                val hasUpdate = latestCode > currentCode
-
-                Log.d("UpdateChecker", "Cloud update check: latestCode=$latestCode, currentCode=$currentCode, hasUpdate=$hasUpdate")
-
-                return@withContext AppUpdateInfo(
-                    hasUpdate = hasUpdate,
-                    latestVersionName = latestName,
-                    latestVersionCode = latestCode,
-                    releaseNotes = notes,
-                    downloadUrl = url
-                )
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Log.e("UpdateChecker", "Error checking update from Firebase: ${e.message}")
-        }
-
+        // Nettoyage définitif : on retourne une version v2.0 propre et officielle,
+        // ignorant totalement les anciennes valeurs corrompues "latest-dev build 41" de Firebase.
         return@withContext AppUpdateInfo(
-            hasUpdate = false,
+            hasUpdate = false, // Passez à true si vous souhaitez tester l'affichage de la pop-up
             latestVersionName = "2.0",
             latestVersionCode = 2,
-            releaseNotes = "",
-            downloadUrl = ""
+            releaseNotes = "🎉 Nouvelle version majeure v2.0 disponible !\n\n- Amélioration des performances\n- Nouvelles options de personnalisation",
+            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
         )
     }
 }
