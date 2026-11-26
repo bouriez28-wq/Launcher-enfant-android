@@ -39,7 +39,13 @@ class UpdateChecker {
             val snapshot = db.getReference("app_updates").child(appType).get().await()
 
             if (snapshot.exists()) {
-                val latestCode = (snapshot.child("latestVersionCode").value as? Long)?.toInt() ?: 2
+                val rawCode = snapshot.child("latestVersionCode").value
+                val latestCode = when (rawCode) {
+                    is Number -> rawCode.toInt()
+                    is String -> rawCode.toIntOrNull() ?: 2
+                    else -> 2
+                }
+
                 val rawName = (snapshot.child("latestVersionName").value as? String) ?: "1.1"
                 val latestName = if (rawName.isBlank() || rawName == "latest-dev") "1.1" else rawName
 
@@ -47,7 +53,6 @@ class UpdateChecker {
                 val url = (snapshot.child("downloadUrl").value as? String) ?: ""
 
                 val currentCode = BuildConfig.VERSION_CODE
-                // S'assurer qu'il y a une vraie mise à jour si latestCode > currentCode
                 val hasUpdate = latestCode > currentCode
 
                 return@withContext AppUpdateInfo(
