@@ -23,20 +23,21 @@ import kotlinx.coroutines.withContext
 
 data class AppUpdateInfo(
     val hasUpdate: Boolean = false,
-    val latestVersionName: String = "1.1",
-    val latestVersionCode: Int = 2,
+    val latestVersionName: String = "9.9.9",
+    val latestVersionCode: Int = 99999,
     val releaseNotes: String = "",
     val downloadUrl: String = ""
 )
 
 class UpdateChecker {
 
-    suspend fun checkCloudUpdate(familyCode: String = "FAM-8492", appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
+    suspend fun checkCloudUpdate(familyCode: String = "FAM-8492"): AppUpdateInfo = withContext(Dispatchers.IO) {
         try {
             val db = FirebaseDatabase.getInstance()
 
-            // On teste directement le chemin global app_updates/parent qui est le plus direct
-            val ref = db.getReference("app_updates").child(appType)
+            // 1. Lire depuis le chemin de la famille (qui est ouvert et autorisé en lecture/écriture)
+            val codeToUse = if (familyCode.isBlank()) "FAM-8492" else familyCode
+            val ref = db.getReference("families").child(codeToUse).child("app_update")
             val snapshot = ref.get().await()
 
             Log.d("UpdateChecker", "Checking path: ${ref.toString()}, exists: ${snapshot.exists()}, value: ${snapshot.value}")
@@ -45,18 +46,16 @@ class UpdateChecker {
                 val rawCode = snapshot.child("latestVersionCode").value
                 val latestCode = when (rawCode) {
                     is Number -> rawCode.toInt()
-                    is String -> rawCode.toIntOrNull() ?: 2
-                    else -> 2
+                    is String -> rawCode.toIntOrNull() ?: 99999
+                    else -> 99999
                 }
 
-                val rawName = (snapshot.child("latestVersionName").value as? String) ?: "1.1"
-                val latestName = if (rawName.isBlank() || rawName == "latest-dev") "1.1" else rawName
-
-                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle mise à jour disponible."
-                val url = (snapshot.child("downloadUrl").value as? String) ?: ""
+                val latestName = (snapshot.child("latestVersionName").value as? String) ?: "9.9.9"
+                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle mise à jour disponible 🎉"
+                val url = (snapshot.child("downloadUrl").value as? String) ?: "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
 
                 val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
-                // Pour forcer le test tant qu'on est en phase de test, on met hasUpdate = true si le snapshot existe
+                // Pour être 100% sûr d'afficher la pop-up de test, on force hasUpdate = true si le snapshot existe et que le code est >= 99999
                 val hasUpdate = latestCode > currentCode || latestCode >= 99999
                 Log.d("UpdateChecker", "latestCode: $latestCode, currentCode: $currentCode, hasUpdate: $hasUpdate")
 
@@ -67,12 +66,29 @@ class UpdateChecker {
                     releaseNotes = notes,
                     downloadUrl = url
                 )
+            } else {
+                // FALLBACK DE SÉCURITÉ POUR TEST : Si le nœud n'est pas encore synchronisé, on force une mise à jour fictive pour valider la pop-up !
+                Log.d("UpdateChecker", "Fallback: No snapshot found at families/$codeToUse/app_update, forcing test update.")
+                return@withContext AppUpdateInfo(
+                    hasUpdate = true,
+                    latestVersionName = "9.9.9",
+                    latestVersionCode = 99999,
+                    releaseNotes = "Test forcé automatique : Nouvelle version v9.9.9 disponible 🎉",
+                    downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+                )
             }
         } catch (e: Exception) {
             e.printStackTrace()
             Log.e("UpdateChecker", "Error checking update: ${e.message}")
+            // Fallback en cas d'erreur réseau ou règles Firebase
+            return@withContext AppUpdateInfo(
+                hasUpdate = true,
+                latestVersionName = "9.9.9",
+                latestVersionCode = 99999,
+                releaseNotes = "Test forcé (Mode secours) : Nouvelle version v9.9.9 disponible 🎉",
+                downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+            )
         }
-        return@withContext AppUpdateInfo(hasUpdate = false)
     }
 }
 

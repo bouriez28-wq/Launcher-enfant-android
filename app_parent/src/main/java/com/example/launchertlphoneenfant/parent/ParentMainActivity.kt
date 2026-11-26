@@ -165,8 +165,8 @@ fun ParentAppNavigation() {
     val updateChecker = remember { UpdateChecker() }
     val apkInstaller = remember { ApkInstaller(context) }
 
-    LaunchedEffect(Unit) {
-        val info = updateChecker.checkCloudUpdate("parent")
+    LaunchedEffect(familyCode) {
+        val info = updateChecker.checkCloudUpdate(familyCode)
         if (info.hasUpdate) {
             updateInfoState = info
         }
