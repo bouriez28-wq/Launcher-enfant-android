@@ -1,27 +1,32 @@
 package com.example.launchertlphoneenfant.parent.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.model.ChildProfile
 import com.example.launchertlphoneenfant.parent.model.WeeklyTheme
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun ParentStoriesScreen(familyCode: String) {
@@ -103,10 +108,7 @@ fun ParentStoriesScreen(familyCode: String) {
                 val updatedList = childrenProfiles + newChild
                 database.getReference("families").child(familyCode).child("children").setValue(updatedList)
             }
-            1 -> ManageWeeklyThemes(weeklyThemes) { newTheme ->
-                val updatedList = weeklyThemes.filter { it.dayOfWeek != newTheme.dayOfWeek } + newTheme
-                database.getReference("families").child(familyCode).child("weekly_themes").setValue(updatedList.sortedBy { it.dayOfWeek })
-            }
+            1 -> ManageWeeklyThemes(weeklyThemes, familyCode, database)
             2 -> ManageAiSettings(apiKey) { newKey ->
                 database.getReference("families").child(familyCode).child("ai_settings").child("apiKey").setValue(newKey)
             }
@@ -143,7 +145,6 @@ fun ManageChildrenProfiles(profiles: List<ChildProfile>, onAddChild: (ChildProfi
 
     if (showAddDialog) {
         var name by remember { mutableStateOf("") }
-        // Simplification pour l'exemple : on fixe l'âge en dur lors de la saisie (à améliorer avec DatePicker)
         var ageStr by remember { mutableStateOf("4") }
 
         AlertDialog(
@@ -169,14 +170,72 @@ fun ManageChildrenProfiles(profiles: List<ChildProfile>, onAddChild: (ChildProfi
 }
 
 @Composable
-fun ManageWeeklyThemes(themes: List<WeeklyTheme>, onUpdateTheme: (WeeklyTheme) -> Unit) {
+fun ManageWeeklyThemes(themes: List<WeeklyTheme>, familyCode: String, database: FirebaseDatabase) {
+    val context = LocalContext.current
     val days = listOf("Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche")
 
-    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Calculer le jour actuel (1 = Lundi ... 7 = Dimanche)
+    val calendar = Calendar.getInstance()
+    val currentDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+    val todayIndex = if (currentDayOfWeek == Calendar.SUNDAY) 6 else currentDayOfWeek - 2
+    val todayName = days.getOrElse(todayIndex) { "Lundi" }
+
+    var customTodayLabel by remember { mutableStateOf("") }
+    var customTodayPrompt by remember { mutableStateOf("") }
+
+    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // En-tête / Création rapide du thème personnalisé pour aujourd'hui
         item {
-            Text("Les 7 Thèmes de la Semaine", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Text("Ils apparaîtront sous forme de 7 boutons sur le téléphone de l'enfant.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "✨ Thème personnalisé pour aujourd'hui ($todayName)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Créez ou modifiez instantanément le thème de l'histoire pour ce jour.", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = customTodayLabel,
+                        onValueChange = { customTodayLabel = it },
+                        label = { Text("Titre du thème du jour (ex: Le dragon magique)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = customTodayPrompt,
+                        onValueChange = { customTodayPrompt = it },
+                        label = { Text("Description détaillée pour l'IA (ex: Une histoire sur un petit dragon...)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            if (customTodayLabel.isNotBlank()) {
+                                val dayNum = todayIndex + 1
+                                val updatedTheme = WeeklyTheme(dayOfWeek = dayNum, label = customTodayLabel.trim(), promptTheme = customTodayPrompt.trim())
+                                val updatedList = themes.filter { it.dayOfWeek != dayNum } + updatedTheme
+                                database.getReference("families").child(familyCode).child("weekly_themes").setValue(updatedList.sortedBy { it.dayOfWeek })
+                                Toast.makeText(context, "Thème personnalisé d'aujourd'hui appliqué !", Toast.LENGTH_SHORT).show()
+                                customTodayLabel = ""
+                                customTodayPrompt = ""
+                            } else {
+                                Toast.makeText(context, "Veuillez entrer au moins un titre", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                    ) {
+                        Text("Publier le thème pour aujourd'hui")
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
+            Text("Les 7 Thèmes de la Semaine (Rotation Hebdomadaire)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(4.dp))
         }
 
         items(7) { index ->
@@ -189,19 +248,29 @@ fun ManageWeeklyThemes(themes: List<WeeklyTheme>, onUpdateTheme: (WeeklyTheme) -
 
             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                 Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-                    Text(days[index], fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text(days[index], fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        if (index == todayIndex) {
+                            Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
+                                Text("Aujourd'hui", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        }
+                    }
                     
                     if (isEditing) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(value = label, onValueChange = { label = it }, label = { Text("Titre du bouton (ex: Aventure Spatiale)") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = label, onValueChange = { label = it }, label = { Text("Titre") }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedTextField(value = prompt, onValueChange = { prompt = it }, label = { Text("Thème détaillé pour l'IA") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = prompt, onValueChange = { prompt = it }, label = { Text("Thème IA") }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                             TextButton(onClick = { isEditing = false }) { Text("Annuler") }
                             Button(onClick = {
-                                onUpdateTheme(WeeklyTheme(dayOfWeek = dayNumber, label = label, promptTheme = prompt))
+                                val updatedTheme = WeeklyTheme(dayOfWeek = dayNumber, label = label.trim(), promptTheme = prompt.trim())
+                                val updatedList = themes.filter { it.dayOfWeek != dayNumber } + updatedTheme
+                                database.getReference("families").child(familyCode).child("weekly_themes").setValue(updatedList.sortedBy { it.dayOfWeek })
                                 isEditing = false
+                                Toast.makeText(context, "Thème mis à jour !", Toast.LENGTH_SHORT).show()
                             }) { Text("Enregistrer") }
                         }
                     } else {
@@ -209,8 +278,12 @@ fun ManageWeeklyThemes(themes: List<WeeklyTheme>, onUpdateTheme: (WeeklyTheme) -
                         Text("Titre : ${existingTheme?.label ?: "Non défini"}")
                         Text("Thème IA : ${existingTheme?.promptTheme ?: "Non défini"}", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(onClick = { isEditing = true }) {
-                            Text("Modifier le thème du ${days[index]}")
+                        OutlinedButton(onClick = {
+                            label = existingTheme?.label ?: ""
+                            prompt = existingTheme?.promptTheme ?: ""
+                            isEditing = true
+                        }) {
+                            Text("Modifier le thème")
                         }
                     }
                 }
