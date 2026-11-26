@@ -1,7 +1,7 @@
 package com.example.launchertlphoneenfant.parent.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,12 +20,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.model.RewardItem
@@ -37,7 +35,6 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import kotlin.math.roundToInt
 
 @Composable
 fun ParentRoutinesScreen(familyCode: String) {
@@ -205,7 +202,7 @@ fun ManageRoutinesList(
                 // 1. Matin
                 item { Text("🌅 Matin", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp)) }
                 if (morningList.isEmpty()) {
-                    item { Text("Aucune tâche le matin. (Appui long + glisser haut/bas pour déplacer)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche le matin. (Appui long pour placer une tâche ici)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(morningList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
@@ -213,7 +210,7 @@ fun ManageRoutinesList(
                 // 2. Après-midi
                 item { Text("☀️ Après-midi", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (afternoonList.isEmpty()) {
-                    item { Text("Aucune tâche l'après-midi. (Appui long + glisser haut/bas pour déplacer)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche l'après-midi. (Appui long pour placer une tâche ici)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(afternoonList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
@@ -221,7 +218,7 @@ fun ManageRoutinesList(
                 // 3. Après école
                 item { Text("🎒 Après l'école", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (afterSchoolList.isEmpty()) {
-                    item { Text("Aucune tâche après l'école. (Appui long + glisser haut/bas pour déplacer)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche après l'école. (Appui long pour placer une tâche ici)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(afterSchoolList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
@@ -229,7 +226,7 @@ fun ManageRoutinesList(
                 // 4. Soir
                 item { Text("🌙 Soir", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (eveningList.isEmpty()) {
-                    item { Text("Aucune tâche le soir. (Appui long + glisser haut/bas pour déplacer)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche le soir. (Appui long pour placer une tâche ici)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(eveningList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
@@ -277,43 +274,18 @@ fun RoutineCard(
     onDeleteRoutine: (String) -> Unit,
     onUpdateRoutineTime: (String, TimeOfDay) -> Unit
 ) {
-    val categories = listOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON, TimeOfDay.AFTER_SCHOOL, TimeOfDay.EVENING)
-    var offsetY by remember { mutableStateOf(0f) }
-    var isDragging by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .offset { IntOffset(0, offsetY.roundToInt()) }
-            .pointerInput(routine.id) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { isDragging = true },
-                    onDragEnd = {
-                        val currentIndex = categories.indexOf(routine.timeOfDay)
-                        // Glissé vers le bas -> catégorie suivante
-                        if (offsetY > 70f && currentIndex < categories.size - 1) {
-                            onUpdateRoutineTime(routine.id, categories[currentIndex + 1])
-                        }
-                        // Glissé vers le haut -> catégorie précédente
-                        else if (offsetY < -70f && currentIndex > 0) {
-                            onUpdateRoutineTime(routine.id, categories[currentIndex - 1])
-                        }
-                        offsetY = 0f
-                        isDragging = false
-                    },
-                    onDragCancel = {
-                        offsetY = 0f
-                        isDragging = false
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        offsetY += dragAmount.y
-                    }
-                )
-            },
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { showMoveDialog = true }
+            ),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isDragging) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 12.dp else 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
@@ -323,7 +295,7 @@ fun RoutineCard(
                 if (routine.description.isNotBlank()) {
                     Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                 }
-                Text(if (isDragging) "⇄ Déplacement en cours..." else "✋ Appui long puis glisser haut/bas", fontSize = 10.sp, color = if (isDragging) MaterialTheme.colorScheme.primary else Color.Gray)
+                Text("📌 Appui long pour déplacer vers une autre catégorie", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
             }
             Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
             Spacer(modifier = Modifier.width(8.dp))
@@ -331,6 +303,42 @@ fun RoutineCard(
                 Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error)
             }
         }
+    }
+
+    // Dialogue d'appui long ultra-fluide pour choisir la catégorie de destination en 1 clic
+    if (showMoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showMoveDialog = false },
+            title = { Text("Déplacer la tâche", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Où souhaitez-vous placer \"${routine.title}\" ?", fontSize = 13.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TimeOfDay.entries.forEach { time ->
+                        Button(
+                            onClick = {
+                                onUpdateRoutineTime(routine.id, time)
+                                showMoveDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (routine.timeOfDay == time) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Text(
+                                text = "${time.icon} ${time.displayName}",
+                                color = if (routine.timeOfDay == time) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showMoveDialog = false }) { Text("Annuler") }
+            }
+        )
     }
 }
 
