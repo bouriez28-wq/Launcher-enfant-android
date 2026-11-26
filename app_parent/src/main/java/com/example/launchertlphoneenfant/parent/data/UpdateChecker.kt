@@ -47,13 +47,12 @@ class UpdateChecker {
             }
         }
 
-        // Fallback de secours infaillible (inspiré du projet Routinercompense)
         return@withContext AppUpdateInfo(
-            hasUpdate = true,
-            latestVersionName = "2.0",
-            latestVersionCode = 1000,
-            releaseNotes = "🎉 Nouvelle version majeure v2.0 disponible !\n\n- Amélioration des performances\n- Nouvelles options de personnalisation",
-            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+            hasUpdate = false,
+            latestVersionName = "1.1",
+            latestVersionCode = 2,
+            releaseNotes = "",
+            downloadUrl = ""
         )
     }
 
@@ -87,15 +86,16 @@ class UpdateChecker {
 
                 val dataObj = obj.optJSONObject("data") ?: obj
 
-                val latestVersionCode = dataObj.optInt("latestVersionCode", 1000)
-                val latestVersionName = dataObj.optString("latestVersionName", "2.0")
+                val latestVersionCode = dataObj.optInt("latestVersionCode", 2)
+                val latestVersionName = dataObj.optString("latestVersionName", "1.1")
                 val releaseNotes = dataObj.optString("releaseNotes", "Nouvelle version disponible.")
-                val downloadUrl = dataObj.optString("downloadUrl", "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk")
+                val downloadUrl = dataObj.optString("downloadUrl", "")
 
                 val currentVersionCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
-                val hasUpdate = latestVersionCode > currentVersionCode || true // Forcé pour test
+                // Comparaison stricte normale : pas de boucle infinie une fois mis à jour
+                val hasUpdate = latestVersionCode > currentVersionCode
 
-                Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, name=$latestVersionName")
+                Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, current=$currentVersionCode, hasUpdate=$hasUpdate")
 
                 return AppUpdateInfo(
                     hasUpdate = hasUpdate,
