@@ -3,6 +3,7 @@ package com.example.launchertlphoneenfant.parent.ui.screens
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -192,7 +193,7 @@ fun ParentSettingsScreen(
             }
         }
 
-        // 5. Partager l'application avec un QR Code
+        // 5. Partager l'application avec un QR Code (Double choix Parent / Enfant)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -204,13 +205,13 @@ fun ParentSettingsScreen(
                     Text("Partager l'application", fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Générez un QR Code pour installer l'application sur un autre appareil.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Affichez les QR Codes de téléchargement direct pour l'App Parent ou l'App Enfant.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = { showQrDialog = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Afficher le QR Code de partage")
+                    Text("Afficher les QR Codes directs")
                 }
             }
         }
@@ -382,7 +383,6 @@ fun ParentSettingsScreen(
                             .apply()
                         showThemeDialog = false
                         Toast.makeText(context, "Thème appliqué avec succès !", Toast.LENGTH_SHORT).show()
-                        // Redémarrer l'activité pour appliquer le thème instantanément
                         (context as? Activity)?.recreate()
                     }
                 ) {
@@ -395,48 +395,57 @@ fun ParentSettingsScreen(
         )
     }
 
-    // 4. Dialogue QR Code de partage
+    // 4. Dialogue QR Codes de téléchargement direct (Parent vs Enfant)
     if (showQrDialog) {
-        val portalUrl = "https://launcher-enfant.web.app"
-        val qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=$portalUrl"
+        val parentApkUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+        val enfantApkUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
+
+        val parentQr = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=$parentApkUrl"
+        val enfantQr = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=$enfantApkUrl"
 
         AlertDialog(
             onDismissRequest = { showQrDialog = false },
-            title = { Text("📷 Partager l'application", fontWeight = FontWeight.Bold) },
+            title = { Text("📷 QR Codes de Téléchargement Direct", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(450.dp).verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("Scannez ce QR Code pour accéder au portail de téléchargement familial :", fontSize = 13.sp, textAlign = TextAlign.Center)
+                    Text("Scannez le QR Code correspondant à l'application souhaitée :", fontSize = 13.sp, textAlign = TextAlign.Center)
 
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        tonalElevation = 4.dp,
-                        modifier = Modifier.padding(8.dp)
-                    ) {
+                    // 1. Application Parent
+                    Text("👨‍👩‍👧 1. Application Parent", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Surface(shape = RoundedCornerShape(12.dp), tonalElevation = 4.dp) {
                         Image(
-                            painter = rememberAsyncImagePainter(qrImageUrl),
-                            contentDescription = "QR Code de téléchargement",
-                            modifier = Modifier.size(200.dp)
+                            painter = rememberAsyncImagePainter(parentQr),
+                            contentDescription = "QR Code Parent",
+                            modifier = Modifier.size(140.dp)
                         )
                     }
+                    Button(onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(parentApkUrl))
+                        context.startActivity(intent)
+                    }) {
+                        Text("Télécharger APK Parent direct")
+                    }
 
-                    Text(portalUrl, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                    Button(
-                        onClick = {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Télécharger Launcher Enfant")
-                                putExtra(Intent.EXTRA_TEXT, "Voici le lien sécurisé pour installer l'application familiale : $portalUrl")
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "Partager le lien"))
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Partager le lien par message")
+                    // 2. Application Enfant
+                    Text("📱 2. Application Enfant", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                    Surface(shape = RoundedCornerShape(12.dp), tonalElevation = 4.dp) {
+                        Image(
+                            painter = rememberAsyncImagePainter(enfantQr),
+                            contentDescription = "QR Code Enfant",
+                            modifier = Modifier.size(140.dp)
+                        )
+                    }
+                    Button(onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(enfantApkUrl))
+                        context.startActivity(intent)
+                    }) {
+                        Text("Télécharger APK Enfant direct")
                     }
                 }
             },
