@@ -22,9 +22,9 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 data class AppUpdateInfo(
-    val hasUpdate: Boolean = true,
-    val latestVersionName: String = "9.9.9",
-    val latestVersionCode: Int = 99999,
+    val hasUpdate: Boolean = false,
+    val latestVersionName: String = "1.1",
+    val latestVersionCode: Int = 2,
     val releaseNotes: String = "",
     val downloadUrl: String = ""
 )
@@ -35,19 +35,27 @@ class UpdateChecker {
         try {
             val db = FirebaseDatabase.getInstance()
             val snapshot = db.getReference("app_updates").child(appType).get().await()
+
             if (snapshot.exists()) {
                 val rawCode = snapshot.child("latestVersionCode").value
                 val latestCode = when (rawCode) {
                     is Number -> rawCode.toInt()
-                    is String -> rawCode.toIntOrNull() ?: 99999
-                    else -> 99999
+                    is String -> rawCode.toIntOrNull() ?: 2
+                    else -> 2
                 }
-                val latestName = (snapshot.child("latestVersionName").value as? String) ?: "9.9.9"
-                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle version v9.9.9 disponible 🎉"
+
+                val rawName = (snapshot.child("latestVersionName").value as? String) ?: "1.1"
+                val latestName = if (rawName.isBlank() || rawName == "latest-dev") "1.1" else rawName
+
+                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle mise à jour disponible 🎉"
                 val url = (snapshot.child("downloadUrl").value as? String) ?: "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
 
+                val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
+                // Comparaison stricte : pas de boucle infinie
+                val hasUpdate = latestCode > currentCode
+
                 return@withContext AppUpdateInfo(
-                    hasUpdate = true,
+                    hasUpdate = hasUpdate,
                     latestVersionName = latestName,
                     latestVersionCode = latestCode,
                     releaseNotes = notes,
@@ -59,14 +67,7 @@ class UpdateChecker {
             Log.e("UpdateChecker", "Error checking update: ${e.message}")
         }
 
-        // Mode secours infaillible garanti : affiche toujours la pop-up de mise à jour 9.9.9
-        return@withContext AppUpdateInfo(
-            hasUpdate = true,
-            latestVersionName = "9.9.9",
-            latestVersionCode = 99999,
-            releaseNotes = "Nouvelle mise à jour v9.9.9 disponible 🎉\n\n- Corrections et améliorations de l'interface\n- Nouvelles fonctionnalités parentales",
-            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
-        )
+        return@withContext AppUpdateInfo(hasUpdate = false)
     }
 }
 

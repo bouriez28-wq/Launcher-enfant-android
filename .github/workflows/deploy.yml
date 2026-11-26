@@ -48,13 +48,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database (Forçage version 99999 pour test pop-up)
+      - name: Mettre à jour Firebase Database (Version propre synchronisée)
         run: |
+          RUN_NUM=${{ github.run_number }}
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
           
-          PAYLOAD='{"latestVersionCode": 99999, "latestVersionName": "9.9.9", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "Nouvelle version v9.9.9 disponible 🎉"}'
-          CHILD_PAYLOAD='{"latestVersionCode": 99999, "latestVersionName": "9.9.9", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "Nouvelle version v9.9.9 disponible 🎉"}'
+          PAYLOAD='{"latestVersionCode": '$RUN_NUM', "latestVersionName": "1.'$RUN_NUM'", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "Nouvelle version v1.'$RUN_NUM' disponible 🎉"}'
+          CHILD_PAYLOAD='{"latestVersionCode": '$RUN_NUM', "latestVersionName": "1.'$RUN_NUM'", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "Nouvelle version v1.'$RUN_NUM' disponible 🎉"}'
 
           echo "Mise à jour families/FAM-8492/app_update..."
           curl -s -X PATCH -d "$PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/families/FAM-8492/app_update.json"
@@ -65,4 +66,4 @@ jobs:
           echo "Mise à jour app_updates/child..."
           curl -s -X PATCH -d "$CHILD_PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json"
           
-          echo "Base de données Firebase mise à jour avec la version 99999 avec succès !"
+          echo "Base de données Firebase mise à jour avec la version propre !"
