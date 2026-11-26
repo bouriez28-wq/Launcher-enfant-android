@@ -188,8 +188,8 @@ fun ManageRoutinesList(
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
                 val morningList = dailyList.filter { it.timeOfDay == TimeOfDay.MORNING }
-                val afternoonList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTERNOON && !it.title.lowercase().contains("école") && !it.title.lowercase().contains("devoir") }
-                val afterSchoolList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTERNOON && (it.title.lowercase().contains("école") || it.title.lowercase().contains("devoir")) }
+                val afternoonList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTERNOON && !it.title.lowercase().contains("école") && !it.title.lowercase().contains("devoir") && !it.title.lowercase().contains("cartable") }
+                val afterSchoolList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTERNOON && (it.title.lowercase().contains("école") || it.title.lowercase().contains("devoir") || it.title.lowercase().contains("cartable") || it.title.lowercase().contains("goûter")) }
                 val eveningList = dailyList.filter { it.timeOfDay == TimeOfDay.EVENING }
 
                 if (morningList.isNotEmpty()) {
@@ -255,22 +255,12 @@ fun RoutineCard(routine: RoutineItem, onDeleteRoutine: (String) -> Unit) {
             Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(routine.title, fontWeight = FontWeight.Bold)
-                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
-                        val badgeText = if (routine.frequency == RoutineFrequency.SEASONAL && routine.season != null) {
-                            "${routine.season.displayName} 🍂"
-                        } else {
-                            routine.frequency.displayName
-                        }
-                        Text(badgeText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
-                    }
-                }
+                Text(routine.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 if (routine.description.isNotBlank()) {
                     Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = { onDeleteRoutine(routine.id) }) {
                 Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error)
