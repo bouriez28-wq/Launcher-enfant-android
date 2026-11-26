@@ -25,7 +25,7 @@ class UpdateCheckWorker(
             val updateChecker = UpdateChecker()
             val updateInfo = updateChecker.checkCloudUpdate("parent")
             if (updateInfo.hasUpdate && updateInfo.latestVersionCode > BuildConfig.VERSION_CODE) {
-                showUpdateSystemNotification(context, updateInfo.latestVersionName)
+                showUpdateSystemNotification(context, updateInfo.latestVersionName, updateInfo.downloadUrl)
             }
             Result.success()
         } catch (e: Exception) {
@@ -34,7 +34,7 @@ class UpdateCheckWorker(
         }
     }
 
-    private fun showUpdateSystemNotification(context: Context, versionName: String) {
+    private fun showUpdateSystemNotification(context: Context, versionName: String, downloadUrl: String) {
         val channelId = "app_updates_channel"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -51,6 +51,8 @@ class UpdateCheckWorker(
         }
 
         val intent = Intent(context, ParentMainActivity::class.java).apply {
+            action = "ACTION_START_UPDATE"
+            putExtra("download_url", downloadUrl)
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
@@ -63,7 +65,7 @@ class UpdateCheckWorker(
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Mise à jour disponible ! 🎉")
-            .setContentText("La version $versionName est prête à être installée.")
+            .setContentText("Appuyez pour installer la version $versionName immédiatement.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)

@@ -1,6 +1,7 @@
 package com.example.launchertlphoneenfant.parent
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,16 +39,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.launchertlphoneenfant.parent.data.ApkInstaller
 import com.example.launchertlphoneenfant.parent.service.UpdateCheckWorker
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentHomeScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentRoutinesScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentSettingsScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentStoriesScreen
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
@@ -87,6 +91,9 @@ class ParentMainActivity : ComponentActivity() {
             .build()
         WorkManager.getInstance(this).enqueue(immediateWorkRequest)
 
+        // Gérer le clic sur la notification de mise à jour s'il y en a un
+        handleUpdateIntent(intent)
+
         setContent {
             val prefs = remember { getSharedPreferences("parent_theme_prefs", Context.MODE_PRIVATE) }
             val colorPalette = prefs.getString("color_palette", "Orange Chaud") ?: "Orange Chaud"
@@ -121,6 +128,22 @@ class ParentMainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun handleUpdateIntent(intent: Intent?) {
+        val downloadUrl = intent?.getStringExtra("download_url")
+        if (!downloadUrl.isNullOrBlank()) {
+            val apkInstaller = ApkInstaller(this)
+            lifecycleScope.launch(Dispatchers.IO) {
+                apkInstaller.downloadAndInstallApk(downloadUrl) { _ -> }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleUpdateIntent(intent)
     }
 }
 
