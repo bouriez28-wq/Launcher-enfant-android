@@ -1,9 +1,14 @@
 package com.example.launchertlphoneenfant.parent.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Add
@@ -13,7 +18,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.model.RewardItem
@@ -150,6 +158,7 @@ fun ManageRoutinesList(
     var subTab by remember { mutableIntStateOf(0) } // 0 = Quotidiennes, 1 = Hebdomadaires, 2 = Mensuelles, 3 = Saisonnières
     var showAddDialog by remember { mutableStateOf(false) }
     var showLibraryDialog by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     Column(modifier = Modifier.fillMaxSize()) {
         ScrollableTabRow(selectedTabIndex = subTab, modifier = Modifier.fillMaxWidth()) {
@@ -161,11 +170,11 @@ fun ManageRoutinesList(
         Spacer(modifier = Modifier.height(10.dp))
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { showAddDialog = true }, modifier = Modifier.weight(1f)) {
+            Button(onClick = { focusManager.clearFocus(); showAddDialog = true }, modifier = Modifier.weight(1f)) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Text("Créer")
             }
-            OutlinedButton(onClick = { showLibraryDialog = true }, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = { focusManager.clearFocus(); showLibraryDialog = true }, modifier = Modifier.weight(1f)) {
                 Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = null)
                 Text("Bibliothèque")
             }
@@ -274,10 +283,11 @@ fun ManageRewardsList(
     onDeleteReward: (String) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            Button(onClick = { showAddDialog = true }, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { focusManager.clearFocus(); showAddDialog = true }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Text("Ajouter un Nouveau Cadeau au Magasin")
             }
@@ -319,23 +329,66 @@ fun AddRoutineDialog(defaultFrequency: RoutineFrequency, onDismiss: () -> Unit, 
     var frequency by remember { mutableStateOf(defaultFrequency) }
     var timeOfDay by remember { mutableStateOf(TimeOfDay.MORNING) }
     var season by remember { mutableStateOf(Season.SPRING) }
+    val focusManager = LocalFocusManager.current
+
+    val iconLibrary = listOf("🛏️", "🪥", "🥣", "📚", "🧸", "🚿", "🎒", "🧹", "🍏", "🥛", "👕", "👟", "⚽", "🎨", "🎵", "🚲", "⭐", "🧼", "🍎", "🧦")
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Nouvelle Tâche") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = icon, onValueChange = { icon = it }, label = { Text("Icône (Emoji)") }, singleLine = true)
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Titre") }, singleLine = true)
-                OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description") })
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                Text("Choisir une icône :", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    iconLibrary.forEach { emoji ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (icon == emoji) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            onClick = { icon = emoji },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(emoji, fontSize = 20.sp)
+                            }
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Titre de la tâche") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { /* focus moves naturally */ })
+                )
+
+                OutlinedTextField(
+                    value = desc,
+                    onValueChange = { desc = it },
+                    label = { Text("Description (optionnelle)") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                )
 
                 Text("Fréquence :", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     RoutineFrequency.entries.forEach { freq ->
                         FilterChip(
                             selected = frequency == freq,
                             onClick = { frequency = freq },
-                            label = { Text(freq.displayName, fontSize = 10.sp) }
+                            label = { Text(freq.displayName, fontSize = 11.sp) }
                         )
                     }
                 }
@@ -347,7 +400,7 @@ fun AddRoutineDialog(defaultFrequency: RoutineFrequency, onDismiss: () -> Unit, 
                             FilterChip(
                                 selected = season == s,
                                 onClick = { season = s },
-                                label = { Text(s.displayName, fontSize = 10.sp) }
+                                label = { Text(s.displayName, fontSize = 11.sp) }
                             )
                         }
                     }
@@ -368,17 +421,19 @@ fun AddRoutineDialog(defaultFrequency: RoutineFrequency, onDismiss: () -> Unit, 
                 OutlinedTextField(
                     value = reward,
                     onValueChange = { reward = it },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                     singleLine = true
                 )
             }
         },
         confirmButton = {
             Button(onClick = {
+                focusManager.clearFocus()
                 if (title.isNotBlank()) {
                     onSave(RoutineItem(
-                        title = title,
-                        description = desc,
+                        title = title.trim(),
+                        description = desc.trim(),
                         icon = icon,
                         starsReward = reward.toIntOrNull() ?: 1,
                         frequency = frequency,
@@ -388,7 +443,7 @@ fun AddRoutineDialog(defaultFrequency: RoutineFrequency, onDismiss: () -> Unit, 
                 }
             }) { Text("Enregistrer") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
+        dismissButton = { TextButton(onClick = { focusManager.clearFocus(); onDismiss() }) { Text("Annuler") } }
     )
 }
 
@@ -397,6 +452,7 @@ fun RoutineLibraryDialog(onDismiss: () -> Unit, onAddRoutineFromLibrary: (Routin
     val catalog = getLibraryCatalog()
     var selectedCategory by remember { mutableStateOf("Toutes") }
     val categories = listOf("Toutes", "🍂 Saisons", "🏠 Autonomie", "🧺 Maison", "📚 École")
+    val focusManager = LocalFocusManager.current
 
     val filtered = if (selectedCategory == "Toutes") catalog else catalog.filter {
         when(selectedCategory) {
@@ -408,7 +464,7 @@ fun RoutineLibraryDialog(onDismiss: () -> Unit, onAddRoutineFromLibrary: (Routin
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { focusManager.clearFocus(); onDismiss() },
         title = { Text("📚 Bibliothèque de Modèles", fontWeight = FontWeight.Bold) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().height(400.dp)) {
@@ -426,7 +482,7 @@ fun RoutineLibraryDialog(onDismiss: () -> Unit, onAddRoutineFromLibrary: (Routin
                     items(filtered) { item ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            onClick = { onAddRoutineFromLibrary(item) },
+                            onClick = { focusManager.clearFocus(); onAddRoutineFromLibrary(item) },
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -436,7 +492,7 @@ fun RoutineLibraryDialog(onDismiss: () -> Unit, onAddRoutineFromLibrary: (Routin
                                     Text(item.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                     Text("⭐ ${item.starsReward} étoile(s)", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                                 }
-                                Button(onClick = { onAddRoutineFromLibrary(item) }) {
+                                Button(onClick = { focusManager.clearFocus(); onAddRoutineFromLibrary(item) }) {
                                     Text("Ajouter", fontSize = 12.sp)
                                 }
                             }
@@ -446,7 +502,7 @@ fun RoutineLibraryDialog(onDismiss: () -> Unit, onAddRoutineFromLibrary: (Routin
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
+            TextButton(onClick = { focusManager.clearFocus(); onDismiss() }) { Text("Fermer") }
         }
     )
 }
@@ -457,26 +513,70 @@ fun AddRewardDialog(onDismiss: () -> Unit, onSave: (RewardItem) -> Unit) {
     var desc by remember { mutableStateOf("") }
     var icon by remember { mutableStateOf("🎁") }
     var cost by remember { mutableStateOf("5") }
+    val focusManager = LocalFocusManager.current
+
+    val giftIcons = listOf("🎁", "🎮", "🍕", "🛝", "🌙", "🚲", "🍦", "🎬", "⚽", "🧸", "🎉", "🍬")
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { focusManager.clearFocus(); onDismiss() },
         title = { Text("Nouveau Cadeau au Magasin") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = icon, onValueChange = { icon = it }, label = { Text("Icône (Emoji)") }, singleLine = true)
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Titre du Cadeau") }, singleLine = true)
-                OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description") })
-                OutlinedTextField(value = cost, onValueChange = { cost = it }, label = { Text("Coût en étoiles ⭐") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number), singleLine = true)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                Text("Choisir une icône :", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    giftIcons.forEach { emoji ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (icon == emoji) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            onClick = { icon = emoji },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(emoji, fontSize = 20.sp)
+                            }
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Titre du Cadeau") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                )
+                OutlinedTextField(
+                    value = desc,
+                    onValueChange = { desc = it },
+                    label = { Text("Description") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                )
+                OutlinedTextField(
+                    value = cost,
+                    onValueChange = { cost = it },
+                    label = { Text("Coût en étoiles ⭐") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    singleLine = true
+                )
             }
         },
         confirmButton = {
             Button(onClick = {
+                focusManager.clearFocus()
                 if (title.isNotBlank()) {
-                    onSave(RewardItem(title = title, description = desc, icon = icon, starCost = cost.toIntOrNull() ?: 5))
+                    onSave(RewardItem(title = title.trim(), description = desc.trim(), icon = icon, starCost = cost.toIntOrNull() ?: 5))
                 }
             }) { Text("Enregistrer") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
+        dismissButton = { TextButton(onClick = { focusManager.clearFocus(); onDismiss() }) { Text("Annuler") } }
     )
 }
 
