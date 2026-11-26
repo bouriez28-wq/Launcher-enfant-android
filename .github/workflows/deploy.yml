@@ -48,17 +48,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database via REST API (Sans token)
+      - name: Mettre à jour Firebase Database via REST API (Forçage version 99999)
         run: |
-          RUN_NUM=${{ github.run_number }}
-          FUTURE_VERSION=$((RUN_NUM + 10))
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
           
           echo "Mise à jour de Firebase pour le parent..."
-          curl -s -X PATCH -d '{"latestVersionCode": '$FUTURE_VERSION', "latestVersionName": "2.0-TEST-'$FUTURE_VERSION'", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "Test forcé : Nouvelle version v2.0-TEST-'$FUTURE_VERSION' disponible 🎉"}' "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json"
+          curl -s -X PATCH -d '{"latestVersionCode": 99999, "latestVersionName": "9.9.9", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "Test forcé ultime : Nouvelle version v9.9.9 disponible 🎉"}' "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json"
           
           echo "Mise à jour de Firebase pour l'enfant..."
-          curl -s -X PATCH -d '{"latestVersionCode": '$FUTURE_VERSION', "latestVersionName": "2.0-TEST-'$FUTURE_VERSION'", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "Test forcé : Nouvelle version v2.0-TEST-'$FUTURE_VERSION' disponible 🎉"}' "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json"
+          curl -s -X PATCH -d '{"latestVersionCode": 99999, "latestVersionName": "9.9.9", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "Test forcé ultime : Nouvelle version v9.9.9 disponible 🎉"}' "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json"
           
-          echo "Base de données Firebase mise à jour avec succès !"
+          echo "Base de données Firebase mise à jour avec le code 99999 !"
