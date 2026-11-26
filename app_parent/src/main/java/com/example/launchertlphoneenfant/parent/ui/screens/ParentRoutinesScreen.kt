@@ -1,6 +1,7 @@
 package com.example.launchertlphoneenfant.parent.ui.screens
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -190,7 +191,7 @@ fun ManageRoutinesList(
 
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (subTab == 1) {
-                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES AVEC CHANGEMENT RAPIDE DE MOMENT
+                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES (Matin, Après-midi, Après école, Soir)
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
                 val morningList = dailyList.filter { it.timeOfDay == TimeOfDay.MORNING }
@@ -201,7 +202,7 @@ fun ManageRoutinesList(
                 // 1. Matin
                 item { Text("🌅 Matin", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp)) }
                 if (morningList.isEmpty()) {
-                    item { Text("Aucune tâche le matin.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche le matin. (Appui long sur une tâche pour la déplacer ici)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(morningList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
@@ -209,7 +210,7 @@ fun ManageRoutinesList(
                 // 2. Après-midi
                 item { Text("☀️ Après-midi", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (afternoonList.isEmpty()) {
-                    item { Text("Aucune tâche l'après-midi.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche l'après-midi. (Appui long sur une tâche pour la déplacer ici)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(afternoonList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
@@ -217,7 +218,7 @@ fun ManageRoutinesList(
                 // 3. Après école
                 item { Text("🎒 Après l'école", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (afterSchoolList.isEmpty()) {
-                    item { Text("Aucune tâche après l'école.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche après l'école. (Appui long sur une tâche pour la déplacer ici)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(afterSchoolList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
@@ -225,7 +226,7 @@ fun ManageRoutinesList(
                 // 4. Soir
                 item { Text("🌙 Soir", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (eveningList.isEmpty()) {
-                    item { Text("Aucune tâche le soir.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche le soir. (Appui long sur une tâche pour la déplacer ici)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(eveningList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
@@ -266,53 +267,31 @@ fun ManageRoutinesList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RoutineCard(
     routine: RoutineItem,
     onDeleteRoutine: (String) -> Unit,
     onUpdateRoutineTime: (String, TimeOfDay) -> Unit
 ) {
-    var showTimeMenu by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
 
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { showMoveDialog = true }
+            ),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(routine.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-
-                    // Badge cliquable pour changer instantanément de moment de la journée (déplacer entre Matin, Après-midi, etc.)
-                    Box {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier.clickable { showTimeMenu = true }
-                        ) {
-                            Text(
-                                text = "${routine.timeOfDay.displayName} ▾",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showTimeMenu,
-                            onDismissRequest = { showTimeMenu = false }
-                        ) {
-                            TimeOfDay.entries.forEach { time ->
-                                DropdownMenuItem(
-                                    text = { Text(time.displayName) },
-                                    onClick = {
-                                        onUpdateRoutineTime(routine.id, time)
-                                        showTimeMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
+                Text(routine.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 if (routine.description.isNotBlank()) {
                     Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                 }
@@ -323,6 +302,38 @@ fun RoutineCard(
                 Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error)
             }
         }
+    }
+
+    // Dialogue d'appui long pour déplacer la tâche entre Matin, Après-midi, Après école, Soir
+    if (showMoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showMoveDialog = false },
+            title = { Text("Déplacer la tâche", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Choisissez le moment de la journée pour \"${routine.title}\" :", fontSize = 13.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TimeOfDay.entries.forEach { time ->
+                        OutlinedButton(
+                            onClick = {
+                                onUpdateRoutineTime(routine.id, time)
+                                showMoveDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (routine.timeOfDay == time) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                            )
+                        ) {
+                            Text("${time.icon} ${time.displayName}", fontWeight = if (routine.timeOfDay == time) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showMoveDialog = false }) { Text("Annuler") }
+            }
+        )
     }
 }
 
