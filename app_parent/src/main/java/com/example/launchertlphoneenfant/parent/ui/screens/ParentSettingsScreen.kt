@@ -6,9 +6,11 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -383,13 +385,27 @@ fun ParentSettingsScreen(
         )
     }
 
-    // 3. Dialogue Thèmes & Palettes de couleurs
+    // 3. Dialogue Thèmes & Palettes de couleurs (avec pastilles de couleur surlignées)
     if (showThemeDialog) {
+        val palettes = listOf(
+            Triple("Orange Chaud", "Chaud et dynamique", Color(0xFFFF6D00)),
+            Triple("Bleu Océan", "Frais et professionnel", Color(0xFF0288D1)),
+            Triple("Vert Forêt", "Apaisant et naturel", Color(0xFF2E7D32)),
+            Triple("Violet Magique", "Créatif et ludique", Color(0xFF7B1FA2)),
+            Triple("Rose Doux", "Chaleureux et tendre", Color(0xFFC2185B)),
+            Triple("Rouge Passion", "Énergique", Color(0xFFD32F2F)),
+            Triple("Jaune Soleil", "Lumineux", Color(0xFFFBC02D)),
+            Triple("Gris Sobre", "Professionnel et neutre", Color(0xFF455A64))
+        )
+
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
             title = { Text("Thème & Palette de Couleurs") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().height(350.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Text("Mode d'affichage :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         listOf("Clair", "Sombre", "Système").forEach { mode ->
@@ -402,19 +418,33 @@ fun ParentSettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Palette de couleurs :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Palette de couleurs disponibles :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        listOf("Orange Chaud", "Bleu Océan", "Vert Forêt", "Violet Magique", "Rose Doux").forEach { palette ->
+                        palettes.forEach { (paletteName, _, color) ->
                             Row(
-                                modifier = Modifier.fillMaxWidth().clickable { selectedColorPalette = palette },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedColorPalette = paletteName }
+                                    .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
-                                    selected = selectedColorPalette == palette,
-                                    onClick = { selectedColorPalette = palette }
+                                    selected = selectedColorPalette == paletteName,
+                                    onClick = { selectedColorPalette = paletteName }
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(palette, fontSize = 13.sp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .background(color, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    paletteName,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (selectedColorPalette == paletteName) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selectedColorPalette == paletteName) color else MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
                     }

@@ -104,6 +104,9 @@ class ParentMainActivity : ComponentActivity() {
                 "Vert Forêt" -> Color(0xFF2E7D32)
                 "Violet Magique" -> Color(0xFF7B1FA2)
                 "Rose Doux" -> Color(0xFFC2185B)
+                "Rouge Passion" -> Color(0xFFD32F2F)
+                "Jaune Soleil" -> Color(0xFFFBC02D)
+                "Gris Sobre" -> Color(0xFF455A64)
                 else -> Color(0xFFFF6D00)
             }
 
