@@ -71,7 +71,7 @@ jobs:
           }
           EOF
 
-          npx -y firebase-tools@latest database:set /app_updates/parent parent_update.json --project launcher-enfant --non-interactive
-          npx -y firebase-tools@latest database:set /app_updates/child child_update.json --project launcher-enfant --non-interactive
+          npx -y firebase-tools@latest database:set /app_updates/parent parent_update.json --project launcher-enfant --token "$FIREBASE_TOKEN" --non-interactive
+          npx -y firebase-tools@latest database:set /app_updates/child child_update.json --project launcher-enfant --token "$FIREBASE_TOKEN" --non-interactive
           
           echo "Base de données Firebase mise à jour avec succès via Firebase CLI !"
