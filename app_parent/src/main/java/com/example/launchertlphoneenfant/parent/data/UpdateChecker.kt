@@ -35,14 +35,29 @@ class UpdateChecker {
         try {
             val db = FirebaseDatabase.getInstance()
             val snapshot = db.getReference("app_updates").child(appType).get().await()
+
             if (snapshot.exists()) {
-                val latestCode = (snapshot.child("latestVersionCode").value as? Long)?.toInt() ?: 999
-                val latestName = (snapshot.child("latestVersionName").value as? String) ?: "2.0"
-                val notes = (snapshot.child("releaseNotes").value as? String) ?: "🎉 Nouvelle version majeure v2.0 disponible !"
+                val rawCode = snapshot.child("latestVersionCode").value
+                val latestCode = when (rawCode) {
+                    is Number -> rawCode.toInt()
+                    is String -> rawCode.toIntOrNull() ?: 2
+                    else -> 2
+                }
+
+                val rawName = (snapshot.child("latestVersionName").value as? String) ?: "2.0"
+                val latestName = if (rawName.isBlank() || rawName == "latest-dev") "2.0" else rawName
+
+                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle version disponible."
                 val url = (snapshot.child("downloadUrl").value as? String) ?: "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
 
+                val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
+                // Comparaison normale et stricte : plus de boucle une fois la mise à jour installée
+                val hasUpdate = latestCode > currentCode
+
+                Log.d("UpdateChecker", "Cloud update check: latestCode=$latestCode, currentCode=$currentCode, hasUpdate=$hasUpdate")
+
                 return@withContext AppUpdateInfo(
-                    hasUpdate = true,
+                    hasUpdate = hasUpdate,
                     latestVersionName = latestName,
                     latestVersionCode = latestCode,
                     releaseNotes = notes,
@@ -54,13 +69,12 @@ class UpdateChecker {
             Log.e("UpdateChecker", "Error checking update from Firebase: ${e.message}")
         }
 
-        // Fallback de secours infaillible garanti à 100%
         return@withContext AppUpdateInfo(
-            hasUpdate = true,
+            hasUpdate = false,
             latestVersionName = "2.0",
-            latestVersionCode = 999,
-            releaseNotes = "🎉 Nouvelle version majeure v2.0 disponible !\n\n- Amélioration des performances\n- Nouvelles options de personnalisation",
-            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+            latestVersionCode = 2,
+            releaseNotes = "",
+            downloadUrl = ""
         )
     }
 }
