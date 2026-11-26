@@ -48,19 +48,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database via REST API
+      - name: Mettre à jour Firebase Database via REST API (Test forcé de mise à jour)
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          VERSION_CODE=${{ github.run_number }}
-          VERSION_NAME="1.${{ github.run_number }}"
+          VERSION_CODE=99
+          VERSION_NAME="2.0-TEST"
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
           
           echo "Mise à jour de Firebase pour le parent..."
-          curl -s -X PATCH -d "{\"latestVersionCode\": $VERSION_CODE, \"latestVersionName\": \"$VERSION_NAME\", \"downloadUrl\": \"$PARENT_URL\", \"releaseNotes\": \"Nouvelle version v$VERSION_NAME disponible 🎉\"}" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json?auth=$FIREBASE_TOKEN"
+          curl -s -X PATCH -d "{\"latestVersionCode\": $VERSION_CODE, \"latestVersionName\": \"$VERSION_NAME\", \"downloadUrl\": \"$PARENT_URL\", \"releaseNotes\": \"Test forcé : Nouvelle version v$VERSION_NAME disponible 🎉\"}" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json?auth=$FIREBASE_TOKEN"
           
           echo "Mise à jour de Firebase pour l'enfant..."
-          curl -s -X PATCH -d "{\"latestVersionCode\": $VERSION_CODE, \"latestVersionName\": \"$VERSION_NAME\", \"downloadUrl\": \"$CHILD_URL\", \"releaseNotes\": \"Nouvelle version v$VERSION_NAME disponible 🎉\"}" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json?auth=$FIREBASE_TOKEN"
+          curl -s -X PATCH -d "{\"latestVersionCode\": $VERSION_CODE, \"latestVersionName\": \"$VERSION_NAME\", \"downloadUrl\": \"$CHILD_URL\", \"releaseNotes\": \"Test forcé : Nouvelle version v$VERSION_NAME disponible 🎉\"}" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json?auth=$FIREBASE_TOKEN"
           
           echo "Base de données Firebase mise à jour avec succès !"
