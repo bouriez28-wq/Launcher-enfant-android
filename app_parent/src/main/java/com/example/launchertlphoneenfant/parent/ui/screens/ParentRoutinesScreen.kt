@@ -1,5 +1,6 @@
 package com.example.launchertlphoneenfant.parent.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -131,6 +132,10 @@ fun ParentRoutinesScreen(familyCode: String) {
                 onDeleteRoutine = { routineId ->
                     val updatedList = allRoutines.filter { it.id != routineId }
                     database.getReference("families").child(familyCode).child("routines").setValue(updatedList)
+                },
+                onUpdateRoutineTime = { routineId, newTime ->
+                    val updatedList = allRoutines.map { if (it.id == routineId) it.copy(timeOfDay = newTime) else it }
+                    database.getReference("families").child(familyCode).child("routines").setValue(updatedList)
                 }
             )
         } else {
@@ -153,7 +158,8 @@ fun ParentRoutinesScreen(familyCode: String) {
 fun ManageRoutinesList(
     routines: List<RoutineItem>,
     onAddRoutine: (RoutineItem) -> Unit,
-    onDeleteRoutine: (String) -> Unit
+    onDeleteRoutine: (String) -> Unit,
+    onUpdateRoutineTime: (String, TimeOfDay) -> Unit
 ) {
     var subTab by remember { mutableIntStateOf(0) } // 0 = Tâches, 1 = Quotidiennes, 2 = Hebdomadaires, 3 = Mensuelles, 4 = Saisonnières
     var showAddDialog by remember { mutableStateOf(false) }
@@ -184,7 +190,7 @@ fun ManageRoutinesList(
 
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (subTab == 1) {
-                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES SANS BADGE DE TEMPS
+                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES AVEC CHANGEMENT RAPIDE DE MOMENT
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
                 val morningList = dailyList.filter { it.timeOfDay == TimeOfDay.MORNING }
@@ -197,7 +203,7 @@ fun ManageRoutinesList(
                 if (morningList.isEmpty()) {
                     item { Text("Aucune tâche le matin.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
-                    items(morningList) { routine -> RoutineCard(routine, onDeleteRoutine) }
+                    items(morningList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
 
                 // 2. Après-midi
@@ -205,7 +211,7 @@ fun ManageRoutinesList(
                 if (afternoonList.isEmpty()) {
                     item { Text("Aucune tâche l'après-midi.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
-                    items(afternoonList) { routine -> RoutineCard(routine, onDeleteRoutine) }
+                    items(afternoonList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
 
                 // 3. Après école
@@ -213,7 +219,7 @@ fun ManageRoutinesList(
                 if (afterSchoolList.isEmpty()) {
                     item { Text("Aucune tâche après l'école.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
-                    items(afterSchoolList) { routine -> RoutineCard(routine, onDeleteRoutine) }
+                    items(afterSchoolList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
 
                 // 4. Soir
@@ -221,7 +227,7 @@ fun ManageRoutinesList(
                 if (eveningList.isEmpty()) {
                     item { Text("Aucune tâche le soir.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
-                    items(eveningList) { routine -> RoutineCard(routine, onDeleteRoutine) }
+                    items(eveningList) { routine -> RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime) }
                 }
             } else {
                 val filteredRoutines = when (subTab) {
@@ -232,7 +238,7 @@ fun ManageRoutinesList(
                     else -> routines
                 }
                 items(filteredRoutines) { routine ->
-                    RoutineCard(routine, onDeleteRoutine)
+                    RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime)
                 }
             }
         }
@@ -261,13 +267,52 @@ fun ManageRoutinesList(
 }
 
 @Composable
-fun RoutineCard(routine: RoutineItem, onDeleteRoutine: (String) -> Unit) {
+fun RoutineCard(
+    routine: RoutineItem,
+    onDeleteRoutine: (String) -> Unit,
+    onUpdateRoutineTime: (String, TimeOfDay) -> Unit
+) {
+    var showTimeMenu by remember { mutableStateOf(false) }
+
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(routine.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(routine.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+
+                    // Badge cliquable pour changer instantanément de moment de la journée (déplacer entre Matin, Après-midi, etc.)
+                    Box {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.clickable { showTimeMenu = true }
+                        ) {
+                            Text(
+                                text = "${routine.timeOfDay.displayName} ▾",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showTimeMenu,
+                            onDismissRequest = { showTimeMenu = false }
+                        ) {
+                            TimeOfDay.entries.forEach { time ->
+                                DropdownMenuItem(
+                                    text = { Text(time.displayName) },
+                                    onClick = {
+                                        onUpdateRoutineTime(routine.id, time)
+                                        showTimeMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
                 if (routine.description.isNotBlank()) {
                     Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                 }

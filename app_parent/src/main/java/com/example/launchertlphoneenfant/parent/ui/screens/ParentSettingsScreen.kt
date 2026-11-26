@@ -35,6 +35,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.launchertlphoneenfant.parent.BuildConfig
 import com.example.launchertlphoneenfant.parent.data.ApkInstaller
 import com.example.launchertlphoneenfant.parent.data.AppUpdateInfo
+import com.example.launchertlphoneenfant.parent.data.UpdateChecker
 import com.example.launchertlphoneenfant.parent.data.UpdateDialog
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -49,6 +50,7 @@ fun ParentSettingsScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val updateChecker = remember { UpdateChecker() }
     val apkInstaller = remember { ApkInstaller(context) }
     val database = remember { FirebaseDatabase.getInstance() }
 
@@ -58,6 +60,7 @@ fun ParentSettingsScreen(
 
     var updateInfoState by remember { mutableStateOf<AppUpdateInfo?>(null) }
     var downloadProgressState by remember { mutableStateOf<Int?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
     var showUpToDateDialog by remember { mutableStateOf(false) }
 
     var childName by remember { mutableStateOf("Mon Champion") }
@@ -232,7 +235,7 @@ fun ParentSettingsScreen(
             }
         }
 
-        // 6. Vérification de mise à jour
+        // 6. Vérification de mise à jour (Connexion réelle au cloud Firebase)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -245,18 +248,22 @@ fun ParentSettingsScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
+                    enabled = !isCheckingUpdate,
                     onClick = {
-                        updateInfoState = AppUpdateInfo(
-                            hasUpdate = true,
-                            latestVersionName = "9.9.9",
-                            latestVersionCode = 99999,
-                            releaseNotes = "Test de mise à jour réussi ! Nouvelle version v9.9.9 disponible 🎉",
-                            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
-                        )
+                        isCheckingUpdate = true
+                        coroutineScope.launch {
+                            val info = updateChecker.checkCloudUpdate()
+                            isCheckingUpdate = false
+                            if (info.hasUpdate) {
+                                updateInfoState = info
+                            } else {
+                                showUpToDateDialog = true
+                            }
+                        }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Vérifier les Mises à Jour")
+                    Text(if (isCheckingUpdate) "Vérification..." else "Vérifier les Mises à Jour")
                 }
             }
         }
