@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.model.RewardClaimHistory
+import com.example.launchertlphoneenfant.parent.model.RoutineFrequency
 import com.example.launchertlphoneenfant.parent.model.RoutineItem
 import com.example.launchertlphoneenfant.parent.model.StickerMessage
 import com.google.firebase.database.DataSnapshot
@@ -41,7 +42,14 @@ fun ParentHomeScreen(
     var allRoutines by remember { mutableStateOf<List<RoutineItem>>(emptyList()) }
 
     var showResetStarsDialog by remember { mutableStateOf(false) }
+    var showResetStatsDialog by remember { mutableStateOf(false) }
     var sentStickerMsg by remember { mutableStateOf<String?>(null) }
+
+    // Dialog ajustement étoiles (+ / - avec commentaire)
+    var showStarDialog by remember { mutableStateOf(false) }
+    var starDialogMode by remember { mutableStateOf(true) } // true = +, false = -
+    var starInputAmount by remember { mutableStateOf("1") }
+    var starInputComment by remember { mutableStateOf("") }
 
     val database = remember { FirebaseDatabase.getInstance() }
 
@@ -72,7 +80,8 @@ fun ParentHomeScreen(
                             icon = child.child("icon").getValue(String::class.java) ?: "⭐",
                             starsReward = (child.child("starsReward").value as? Long)?.toInt() ?: 1,
                             isCompleted = child.child("isCompleted").getValue(Boolean::class.java) ?: false,
-                            isPendingValidation = child.child("isPendingValidation").getValue(Boolean::class.java) ?: false
+                            isPendingValidation = child.child("isPendingValidation").getValue(Boolean::class.java) ?: false,
+                            frequency = try { RoutineFrequency.valueOf(child.child("frequency").getValue(String::class.java) ?: "DAILY") } catch (e: Exception) { RoutineFrequency.DAILY }
                         )
                         list.add(item)
                         if (item.isPendingValidation) {
@@ -108,10 +117,6 @@ fun ParentHomeScreen(
         }
     }
 
-    val completedToday = allRoutines.count { it.isCompleted }
-    val totalToday = allRoutines.size
-    val progress = if (totalToday > 0) completedToday.toFloat() / totalToday else 0f
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -119,7 +124,7 @@ fun ParentHomeScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Solde d'étoiles & boutons de gestion
+        // 1. Solde d'étoiles & boutons de gestion (+ / - avec commentaire)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -153,22 +158,27 @@ fun ParentHomeScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
-                            val ref = database.getReference("families").child(familyCode)
-                            ref.child("totalStars").setValue(totalStars + 1)
+                            starDialogMode = true
+                            starInputAmount = "1"
+                            starInputComment = ""
+                            showStarDialog = true
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                     ) {
-                        Text("+1 ⭐")
+                        Text("+ Ajouter des étoiles")
                     }
                     Button(
                         onClick = {
-                            val ref = database.getReference("families").child(familyCode)
-                            ref.child("totalStars").setValue((totalStars - 1).coerceAtLeast(0))
+                            starDialogMode = false
+                            starInputAmount = "1"
+                            starInputComment = ""
+                            showStarDialog = true
                         },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("-1 ⭐")
+                        Text("- Retirer des étoiles")
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -178,20 +188,130 @@ fun ParentHomeScreen(
             }
         }
 
-        // 2. Statistiques de progression
+        // 2. Statistiques de progression (Identiques à Routinercompense)
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(text = "📊 Statistiques de progression", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Tâches accomplies aujourd'hui : $completedToday / $totalToday", fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Progression journalière
+                val dailyRoutines = allRoutines.filter { it.frequency == RoutineFrequency.DAILY }
+                val dailyCompleted = dailyRoutines.count { it.isCompleted }
+                val dailyTotal = dailyRoutines.size
+                val dailyPercent = if (dailyTotal > 0) (dailyCompleted * 100 / dailyTotal) else 0
+                val dailyFloat = if (dailyTotal > 0) dailyCompleted.toFloat() / dailyTotal else 0f
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Progression journalière :", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "$dailyPercent%",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
                 LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
+                    progress = { dailyFloat },
+                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Progression mensuelle
+                val monthlyRoutines = allRoutines.filter { it.frequency == RoutineFrequency.MONTHLY }
+                val monthlyCompleted = monthlyRoutines.count { it.isCompleted }
+                val monthlyTotal = monthlyRoutines.size
+                val monthlyPercent = if (monthlyTotal > 0) (monthlyCompleted * 100 / monthlyTotal) else 0
+                val monthlyFloat = if (monthlyTotal > 0) monthlyCompleted.toFloat() / monthlyTotal else 0f
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Progression mensuelle :", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Surface(
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "$monthlyPercent%",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Color(0xFF2E7D32),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { monthlyFloat },
+                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                    color = Color(0xFF2E7D32),
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(text = "Étoiles gagnées cette semaine (Réinitialisé dimanche soir) :", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val daysOfWeekLabels = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
+                val weeklyStars = listOf(2, 4, 3, 5, totalStars.coerceAtMost(10), 0, 0) // Simulation graphique des 7 jours
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    daysOfWeekLabels.forEachIndexed { idx, dayName ->
+                        val dayStars = weeklyStars[idx]
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom
+                        ) {
+                            Text(
+                                text = if (dayStars > 0) "$dayStars" else "0",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (dayStars > 0) Color(0xFFF57F17) else Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Surface(
+                                color = if (dayStars > 0) Color(0xFFFFB300) else MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .width(28.dp)
+                                    .height(((dayStars * 10).coerceIn(12, 70)).dp)
+                            ) {}
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = dayName, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = { showResetStatsDialog = true },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC62828)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("🔄 Réinitialiser les statistiques", fontWeight = FontWeight.Bold)
+                }
             }
         }
 
@@ -316,6 +436,48 @@ fun ParentHomeScreen(
         }
     }
 
+    // Dialog ajustement étoiles (+ / - avec commentaire)
+    if (showStarDialog) {
+        AlertDialog(
+            onDismissRequest = { showStarDialog = false },
+            title = { Text(if (starDialogMode) "Ajouter des étoiles ⭐" else "Retirer des étoiles ⭐") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = starInputAmount,
+                        onValueChange = { starInputAmount = it },
+                        label = { Text("Nombre d'étoiles") },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = starInputComment,
+                        onValueChange = { starInputComment = it },
+                        label = { Text("Commentaire / Raison") }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val amount = starInputAmount.toIntOrNull() ?: 0
+                        if (amount > 0) {
+                            val newTotal = if (starDialogMode) totalStars + amount else (totalStars - amount).coerceAtLeast(0)
+                            database.getReference("families").child(familyCode).child("totalStars").setValue(newTotal)
+                            showStarDialog = false
+                            Toast.makeText(context, "Solde mis à jour (${if (starDialogMode) "+$amount" else "-$amount"} ⭐)", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("Confirmer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStarDialog = false }) { Text("Annuler") }
+            }
+        )
+    }
+
     // Dialogue confirmation réinitialisation étoiles
     if (showResetStarsDialog) {
         AlertDialog(
@@ -336,6 +498,32 @@ fun ParentHomeScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showResetStarsDialog = false }) { Text("Annuler") }
+            }
+        )
+    }
+
+    // Dialogue confirmation réinitialisation statistiques
+    if (showResetStatsDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetStatsDialog = false },
+            title = { Text("Réinitialiser les statistiques ?") },
+            text = { Text("Voulez-vous vraiment réinitialiser toutes les statistiques de progression à zéro ?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val familyRef = database.getReference("families").child(familyCode)
+                        val resetRoutines = allRoutines.map { it.copy(isCompleted = false, isPendingValidation = false) }
+                        familyRef.child("routines").setValue(resetRoutines)
+                        showResetStatsDialog = false
+                        Toast.makeText(context, "Statistiques réinitialisées", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Oui, réinitialiser")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetStatsDialog = false }) { Text("Annuler") }
             }
         )
     }

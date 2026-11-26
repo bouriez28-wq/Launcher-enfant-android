@@ -11,7 +11,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Settings
@@ -39,11 +38,7 @@ import com.example.launchertlphoneenfant.parent.ui.screens.ParentHomeScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentRoutinesScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentSettingsScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentStoriesScreen
-import com.example.launchertlphoneenfant.parent.ui.screens.ParentValidationScreen
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 
 class ParentMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,7 +79,7 @@ class ParentMainActivity : ComponentActivity() {
 @Composable
 fun ParentAppNavigation() {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val pagerState = rememberPagerState(pageCount = { 5 })
+    val pagerState = rememberPagerState(pageCount = { 4 })
 
     LaunchedEffect(selectedTab) {
         if (pagerState.currentPage != selectedTab) {
@@ -98,34 +93,6 @@ fun ParentAppNavigation() {
 
     // État synchronisé depuis Firebase
     var familyCode by remember { mutableStateOf("FAM-8492") }
-    var dailyLimit by remember { mutableIntStateOf(60) }
-    var bonusMinutes by remember { mutableIntStateOf(0) }
-    var usedMinutes by remember { mutableIntStateOf(0) }
-
-    val databaseUrl = "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
-    val database = remember {
-        try {
-            FirebaseDatabase.getInstance(databaseUrl)
-        } catch (e: Exception) {
-            FirebaseDatabase.getInstance()
-        }
-    }
-
-    remember(familyCode) {
-        if (familyCode.isNotBlank()) {
-            val ref = database.getReference("families").child(familyCode)
-            ref.addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        dailyLimit = (snapshot.child("dailyLimitMinutes").value as? Long)?.toInt() ?: 60
-                        bonusMinutes = (snapshot.child("bonusMinutesToday").value as? Long)?.toInt() ?: 0
-                        usedMinutes = (snapshot.child("usedMinutesToday").value as? Long)?.toInt() ?: 0
-                    }
-                }
-                override fun onCancelled(error: DatabaseError) {}
-            })
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -152,24 +119,18 @@ fun ParentAppNavigation() {
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Checklist, contentDescription = "Validation") },
-                    label = { Text("Validation") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
                     icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "Routines") },
                     label = { Text("Routines") }
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
                     icon = { Icon(Icons.Default.LibraryBooks, contentDescription = "Histoires") },
                     label = { Text("Histoires") }
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 4,
-                    onClick = { selectedTab = 4 },
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
                     icon = { Icon(Icons.Default.Settings, contentDescription = "Paramètres") },
                     label = { Text("Paramètres") }
                 )
@@ -183,10 +144,9 @@ fun ParentAppNavigation() {
             Box(modifier = Modifier.fillMaxSize()) {
                 when (page) {
                     0 -> ParentHomeScreen(familyCode = familyCode)
-                    1 -> ParentValidationScreen(familyCode = familyCode)
-                    2 -> ParentRoutinesScreen(familyCode = familyCode)
-                    3 -> ParentStoriesScreen(familyCode = familyCode)
-                    4 -> ParentSettingsScreen(
+                    1 -> ParentRoutinesScreen(familyCode = familyCode)
+                    2 -> ParentStoriesScreen(familyCode = familyCode)
+                    3 -> ParentSettingsScreen(
                         familyCode = familyCode,
                         onFamilyCodeChange = { familyCode = it }
                     )
