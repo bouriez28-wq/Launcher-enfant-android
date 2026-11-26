@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,11 +72,18 @@ fun UpdateDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = "🎉 Nouvelle mise à jour v${updateInfo.latestVersionName}", fontWeight = FontWeight.Bold)
+            Column {
+                Text(text = "Nouvelle mise à jour disponible", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = "Version v${updateInfo.latestVersionName} (Build ${updateInfo.latestVersionCode})", fontSize = 12.sp, color = Color.Gray)
+            }
         },
         text = {
             Column {
-                Text(text = updateInfo.releaseNotes, fontSize = 14.sp)
+                if (updateInfo.releaseNotes.isNotBlank()) {
+                    Text(text = updateInfo.releaseNotes, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
                 if (downloadProgress != null) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
