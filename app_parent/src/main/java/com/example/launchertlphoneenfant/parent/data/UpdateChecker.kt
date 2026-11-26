@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.launchertlphoneenfant.parent.BuildConfig
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -31,11 +30,9 @@ data class AppUpdateInfo(
 
 class UpdateChecker {
 
-    private val databaseUrl = "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
-
     suspend fun checkCloudUpdate(appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
         try {
-            val db = FirebaseDatabase.getInstance(databaseUrl)
+            val db = FirebaseDatabase.getInstance()
             val snapshot = db.getReference("app_updates").child(appType).get().await()
 
             if (snapshot.exists()) {
@@ -52,7 +49,7 @@ class UpdateChecker {
                 val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle mise à jour disponible."
                 val url = (snapshot.child("downloadUrl").value as? String) ?: ""
 
-                val currentCode = BuildConfig.VERSION_CODE
+                val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
                 val hasUpdate = latestCode > currentCode
 
                 return@withContext AppUpdateInfo(
