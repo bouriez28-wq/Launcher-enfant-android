@@ -13,9 +13,8 @@ android {
         applicationId = "com.example.launchertlphoneenfant.parent"
         minSdk = 26
         targetSdk = 35
-        val dynamicVersionCode = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 2
-        versionCode = dynamicVersionCode
-        versionName = "1.$dynamicVersionCode"
+        versionCode = 999
+        versionName = "2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
