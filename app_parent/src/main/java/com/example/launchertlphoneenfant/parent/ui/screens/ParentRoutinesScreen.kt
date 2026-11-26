@@ -155,17 +155,18 @@ fun ManageRoutinesList(
     onAddRoutine: (RoutineItem) -> Unit,
     onDeleteRoutine: (String) -> Unit
 ) {
-    var subTab by remember { mutableIntStateOf(0) } // 0 = Quotidiennes, 1 = Hebdomadaires, 2 = Mensuelles, 3 = Saisonnières
+    var subTab by remember { mutableIntStateOf(0) } // 0 = Tâches, 1 = Quotidiennes, 2 = Hebdomadaires, 3 = Mensuelles, 4 = Saisonnières
     var showAddDialog by remember { mutableStateOf(false) }
     var showLibraryDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
     Column(modifier = Modifier.fillMaxSize()) {
         ScrollableTabRow(selectedTabIndex = subTab, modifier = Modifier.fillMaxWidth()) {
-            Tab(selected = subTab == 0, onClick = { subTab = 0 }) { Text("🔄 Quotidiennes", modifier = Modifier.padding(10.dp)) }
-            Tab(selected = subTab == 1, onClick = { subTab = 1 }) { Text("📅 Hebdo", modifier = Modifier.padding(10.dp)) }
-            Tab(selected = subTab == 2, onClick = { subTab = 2 }) { Text("📆 Mensuelles", modifier = Modifier.padding(10.dp)) }
-            Tab(selected = subTab == 3, onClick = { subTab = 3 }) { Text("🍂 Saisonnier", modifier = Modifier.padding(10.dp)) }
+            Tab(selected = subTab == 0, onClick = { subTab = 0 }) { Text("📋 Tâches", modifier = Modifier.padding(10.dp)) }
+            Tab(selected = subTab == 1, onClick = { subTab = 1 }) { Text("🔄 Quotidiennes", modifier = Modifier.padding(10.dp)) }
+            Tab(selected = subTab == 2, onClick = { subTab = 2 }) { Text("📅 Hebdo", modifier = Modifier.padding(10.dp)) }
+            Tab(selected = subTab == 3, onClick = { subTab = 3 }) { Text("📆 Mensuelles", modifier = Modifier.padding(10.dp)) }
+            Tab(selected = subTab == 4, onClick = { subTab = 4 }) { Text("🍂 Saisonnier", modifier = Modifier.padding(10.dp)) }
         }
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -176,13 +177,13 @@ fun ManageRoutinesList(
             }
             OutlinedButton(onClick = { focusManager.clearFocus(); showLibraryDialog = true }, modifier = Modifier.weight(1f)) {
                 Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = null)
-                Text("Bibliothèque")
+                Text("Bibliothèque de tâches")
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (subTab == 0) {
+            if (subTab == 1) {
                 // SÉPARATION QUOTIDIENNE : Matin, Après-midi, Après école, Soir
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
@@ -212,10 +213,11 @@ fun ManageRoutinesList(
                 }
             } else {
                 val filteredRoutines = when (subTab) {
-                    1 -> routines.filter { it.frequency == RoutineFrequency.WEEKLY }
-                    2 -> routines.filter { it.frequency == RoutineFrequency.MONTHLY }
-                    3 -> routines.filter { it.frequency == RoutineFrequency.SEASONAL }
-                    else -> emptyList()
+                    0 -> routines // Toutes les tâches
+                    2 -> routines.filter { it.frequency == RoutineFrequency.WEEKLY }
+                    3 -> routines.filter { it.frequency == RoutineFrequency.MONTHLY }
+                    4 -> routines.filter { it.frequency == RoutineFrequency.SEASONAL }
+                    else -> routines
                 }
                 items(filteredRoutines) { routine ->
                     RoutineCard(routine, onDeleteRoutine)
@@ -226,10 +228,11 @@ fun ManageRoutinesList(
 
     if (showAddDialog) {
         val defaultFreq = when(subTab) {
-            0 -> RoutineFrequency.DAILY
-            1 -> RoutineFrequency.WEEKLY
-            2 -> RoutineFrequency.MONTHLY
-            else -> RoutineFrequency.SEASONAL
+            1 -> RoutineFrequency.DAILY
+            2 -> RoutineFrequency.WEEKLY
+            3 -> RoutineFrequency.MONTHLY
+            4 -> RoutineFrequency.SEASONAL
+            else -> RoutineFrequency.DAILY
         }
         AddRoutineDialog(defaultFrequency = defaultFreq, onDismiss = { showAddDialog = false }, onSave = { r -> onAddRoutine(r); showAddDialog = false })
     }
@@ -258,7 +261,7 @@ fun RoutineCard(routine: RoutineItem, onDeleteRoutine: (String) -> Unit) {
                         val badgeText = if (routine.frequency == RoutineFrequency.SEASONAL && routine.season != null) {
                             "${routine.season.displayName} 🍂"
                         } else {
-                            routine.timeOfDay.displayName
+                            routine.frequency.displayName
                         }
                         Text(badgeText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
                     }
@@ -367,8 +370,7 @@ fun AddRoutineDialog(defaultFrequency: RoutineFrequency, onDismiss: () -> Unit, 
                     onValueChange = { title = it },
                     label = { Text("Titre de la tâche") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { /* focus moves naturally */ })
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                 )
 
                 OutlinedTextField(
@@ -454,18 +456,19 @@ fun RoutineLibraryDialog(onDismiss: () -> Unit, onAddRoutineFromLibrary: (Routin
     val categories = listOf("Toutes", "🍂 Saisons", "🏠 Autonomie", "🧺 Maison", "📚 École")
     val focusManager = LocalFocusManager.current
 
-    val filtered = if (selectedCategory == "Toutes") catalog else catalog.filter {
+    val filtered = if (selectedCategory == "Toutes") catalog else catalog.filter { item ->
         when(selectedCategory) {
-            "🍂 Saisons" -> it.frequency == RoutineFrequency.SEASONAL
-            "🏠 Autonomie" -> it.timeOfDay == TimeOfDay.MORNING || it.timeOfDay == TimeOfDay.EVENING
-            "🧺 Maison" -> it.frequency == RoutineFrequency.WEEKLY
-            else -> it.frequency == RoutineFrequency.DAILY
+            "🍂 Saisons" -> item.frequency == RoutineFrequency.SEASONAL
+            "🏠 Autonomie" -> item.title.contains("lit") || item.title.contains("dents") || item.title.contains("déjeuner") || item.title.contains("habiller") || item.title.contains("coiffer") || item.title.contains("douche") || item.title.contains("pyjama")
+            "🧺 Maison" -> item.title.contains("chambre") || item.title.contains("table") || item.title.contains("balai") || item.title.contains("linge") || item.title.contains("poubelle") || item.title.contains("animal") || item.title.contains("courses") || item.title.contains("rangement")
+            "📚 École" -> item.title.contains("devoirs") || item.title.contains("cartable") || item.title.contains("école")
+            else -> true
         }
     }
 
     AlertDialog(
         onDismissRequest = { focusManager.clearFocus(); onDismiss() },
-        title = { Text("📚 Bibliothèque de Modèles", fontWeight = FontWeight.Bold) },
+        title = { Text("📚 Bibliothèque de Tâches", fontWeight = FontWeight.Bold) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().height(400.dp)) {
                 ScrollableTabRow(selectedTabIndex = categories.indexOf(selectedCategory)) {
