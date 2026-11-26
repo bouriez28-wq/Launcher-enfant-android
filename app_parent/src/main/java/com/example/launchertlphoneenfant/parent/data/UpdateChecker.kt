@@ -33,17 +33,15 @@ class UpdateChecker {
 
     private val databaseUrl = "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
 
-    suspend fun checkCloudUpdate(familyCode: String = "FAM-8492", appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
+    suspend fun checkCloudUpdate(familyCode: String = "FAM-8492"): AppUpdateInfo = withContext(Dispatchers.IO) {
         try {
             val db = FirebaseDatabase.getInstance(databaseUrl)
 
-            // 1. Essayer de lire depuis la branche famille
-            var snapshot = db.getReference("families").child(familyCode).child("app_update").get().await()
+            // Vérifier à la fois le chemin famille et le chemin global
+            val snapshotFamily = db.getReference("families").child(familyCode).child("app_update").get().await()
+            val snapshotGlobal = db.getReference("app_updates").child("parent").get().await()
 
-            // 2. Si absent, essayer la branche globale app_updates
-            if (!snapshot.exists()) {
-                snapshot = db.getReference("app_updates").child(appType).get().await()
-            }
+            val snapshot = if (snapshotFamily.exists()) snapshotFamily else snapshotGlobal
 
             Log.d("UpdateChecker", "Snapshot exists: ${snapshot.exists()}, value: ${snapshot.value}")
 

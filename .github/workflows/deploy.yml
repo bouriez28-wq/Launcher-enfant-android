@@ -48,7 +48,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database (Partout pour test 99999)
+      - name: Mettre à jour Firebase Database (Double écriture FAM-8492 et app_updates/parent)
         run: |
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
@@ -65,4 +65,4 @@ jobs:
           echo "Mise à jour app_updates/child..."
           curl -s -X PATCH -d "$CHILD_PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json"
           
-          echo "Base de données Firebase mise à jour sur tous les chemins !"
+          echo "Base de données Firebase mise à jour partout avec succès !"
