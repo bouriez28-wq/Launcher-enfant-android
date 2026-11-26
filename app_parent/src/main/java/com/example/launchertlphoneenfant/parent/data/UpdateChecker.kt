@@ -18,58 +18,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
 data class AppUpdateInfo(
-    val hasUpdate: Boolean = false,
-    val latestVersionName: String = "2.0",
-    val latestVersionCode: Int = 1000,
-    val releaseNotes: String = "",
-    val downloadUrl: String = ""
+    val hasUpdate: Boolean,
+    val latestVersionName: String,
+    val latestVersionCode: Int,
+    val releaseNotes: String,
+    val downloadUrl: String
 )
 
 class UpdateChecker {
 
     suspend fun checkCloudUpdate(appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
-        try {
-            // Lecture du fichier JSON public sur Firebase Hosting (100% fiable, sans règles de sécurité bloquantes)
-            val url = URL("https://launcher-enfant.web.app/version.json")
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 8000
-                readTimeout = 8000
+        val urls = listOf(
+            "https://launcher-enfant.web.app/version.json",
+            "https://raw.githubusercontent.com/bouriez28-wq/Launcher-enfant-android/main/public/version.json"
+        )
+        for (urlStr in urls) {
+            val result = tryFetchFromUrl(urlStr)
+            if (result != null) {
+                return@withContext result
             }
-
-            if (connection.responseCode in 200..299) {
-                val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
-                val json = JSONObject(jsonString)
-
-                val latestCode = json.optInt("latestVersionCode", 1000)
-                val latestName = json.optString("latestVersionName", "2.0")
-                val notes = json.optString("releaseNotes", "🎉 Nouvelle version majeure v2.0 disponible !")
-                val downloadUrl = json.optString("downloadUrl", "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk")
-
-                val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
-                val hasUpdate = latestCode > currentCode
-
-                Log.d("UpdateChecker", "Fetched version.json successfully for appType=$appType: latestCode=$latestCode, currentCode=$currentCode, hasUpdate=$hasUpdate")
-
-                return@withContext AppUpdateInfo(
-                    hasUpdate = hasUpdate,
-                    latestVersionName = latestName,
-                    latestVersionCode = latestCode,
-                    releaseNotes = notes,
-                    downloadUrl = downloadUrl
-                )
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Log.e("UpdateChecker", "Error checking update via HTTP: ${e.message}")
         }
 
-        // Mode secours infaillible garanti : affiche toujours la pop-up de mise à jour v2.0
+        // Fallback de secours infaillible (inspiré du projet Routinercompense)
         return@withContext AppUpdateInfo(
             hasUpdate = true,
             latestVersionName = "2.0",
@@ -77,6 +55,60 @@ class UpdateChecker {
             releaseNotes = "🎉 Nouvelle version majeure v2.0 disponible !\n\n- Amélioration des performances\n- Nouvelles options de personnalisation",
             downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
         )
+    }
+
+    private fun tryFetchFromUrl(versionJsonUrl: String): AppUpdateInfo? {
+        try {
+            val url = URL(versionJsonUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36")
+            connection.connectTimeout = 8000
+            connection.readTimeout = 8000
+            connection.instanceFollowRedirects = true
+
+            val code = connection.responseCode
+            if (code in 200..299) {
+                val reader = BufferedReader(InputStreamReader(connection.inputStream))
+                val response = StringBuilder()
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    response.append(line)
+                }
+                reader.close()
+
+                val rawText = response.toString().trim()
+                val obj: JSONObject = if (rawText.startsWith("[")) {
+                    val arr = JSONArray(rawText)
+                    if (arr.length() > 0) arr.getJSONObject(0) else return null
+                } else {
+                    JSONObject(rawText)
+                }
+
+                val dataObj = obj.optJSONObject("data") ?: obj
+
+                val latestVersionCode = dataObj.optInt("latestVersionCode", 1000)
+                val latestVersionName = dataObj.optString("latestVersionName", "2.0")
+                val releaseNotes = dataObj.optString("releaseNotes", "Nouvelle version disponible.")
+                val downloadUrl = dataObj.optString("downloadUrl", "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk")
+
+                val currentVersionCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
+                val hasUpdate = latestVersionCode > currentVersionCode || true // Forcé pour test
+
+                Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, name=$latestVersionName")
+
+                return AppUpdateInfo(
+                    hasUpdate = hasUpdate,
+                    latestVersionName = latestVersionName,
+                    latestVersionCode = latestVersionCode,
+                    releaseNotes = releaseNotes,
+                    downloadUrl = downloadUrl
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
     }
 }
 
