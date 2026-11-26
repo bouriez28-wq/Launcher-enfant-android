@@ -453,33 +453,64 @@ fun AddRoutineDialog(defaultFrequency: RoutineFrequency, onDismiss: () -> Unit, 
 fun RoutineLibraryDialog(onDismiss: () -> Unit, onAddRoutineFromLibrary: (RoutineItem) -> Unit) {
     val catalog = getLibraryCatalog()
     var selectedCategory by remember { mutableStateOf("Toutes") }
+    var selectedSeasonSubCategory by remember { mutableStateOf("Toutes") }
     val categories = listOf("Toutes", "🍂 Saisons", "🏠 Autonomie", "🧺 Maison", "📚 École")
+    val seasons = listOf("Toutes", "🌸 Printemps", "☀️ Été", "🍂 Automne", "❄️ Hiver")
     val focusManager = LocalFocusManager.current
 
-    val filtered = if (selectedCategory == "Toutes") catalog else catalog.filter { item ->
-        when(selectedCategory) {
+    val filtered = catalog.filter { item ->
+        val matchesCategory = when (selectedCategory) {
             "🍂 Saisons" -> item.frequency == RoutineFrequency.SEASONAL
-            "🏠 Autonomie" -> item.title.contains("lit") || item.title.contains("dents") || item.title.contains("déjeuner") || item.title.contains("habiller") || item.title.contains("coiffer") || item.title.contains("douche") || item.title.contains("pyjama")
-            "🧺 Maison" -> item.title.contains("chambre") || item.title.contains("table") || item.title.contains("balai") || item.title.contains("linge") || item.title.contains("poubelle") || item.title.contains("animal") || item.title.contains("courses") || item.title.contains("rangement")
-            "📚 École" -> item.title.contains("devoirs") || item.title.contains("cartable") || item.title.contains("école")
+            "🏠 Autonomie" -> item.timeOfDay == TimeOfDay.MORNING || item.timeOfDay == TimeOfDay.EVENING || item.title.contains("lit", true) || item.title.contains("dents", true) || item.title.contains("déjeuner", true) || item.title.contains("habiller", true) || item.title.contains("coiffer", true) || item.title.contains("douche", true) || item.title.contains("mains", true) || item.title.contains("eau", true)
+            "🧺 Maison" -> item.title.contains("chambre", true) || item.title.contains("table", true) || item.title.contains("balai", true) || item.title.contains("linge", true) || item.title.contains("poubelle", true) || item.title.contains("animal", true) || item.title.contains("plantes", true) || item.title.contains("manteau", true) || item.title.contains("courses", true) || item.title.contains("jouets", true)
+            "📚 École" -> item.title.contains("devoirs", true) || item.title.contains("cartable", true) || item.title.contains("école", true) || item.title.contains("livre", true) || item.title.contains("leçon", true) || item.title.contains("bureau", true)
             else -> true
         }
+
+        val matchesSeason = if (selectedCategory == "🍂 Saisons" && selectedSeasonSubCategory != "Toutes") {
+            when (selectedSeasonSubCategory) {
+                "🌸 Printemps" -> item.season == Season.SPRING
+                "☀️ Été" -> item.season == Season.SUMMER
+                "🍂 Automne" -> item.season == Season.AUTUMN
+                "❄️ Hiver" -> item.season == Season.WINTER
+                else -> true
+            }
+        } else true
+
+        matchesCategory && matchesSeason
     }
 
     AlertDialog(
         onDismissRequest = { focusManager.clearFocus(); onDismiss() },
         title = { Text("📚 Bibliothèque de Tâches", fontWeight = FontWeight.Bold) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().height(400.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().height(450.dp)) {
                 ScrollableTabRow(selectedTabIndex = categories.indexOf(selectedCategory)) {
                     categories.forEach { cat ->
                         Tab(
                             selected = selectedCategory == cat,
-                            onClick = { selectedCategory = cat },
+                            onClick = {
+                                selectedCategory = cat
+                                selectedSeasonSubCategory = "Toutes"
+                            },
                             text = { Text(cat, fontSize = 12.sp) }
                         )
                     }
                 }
+
+                if (selectedCategory == "🍂 Saisons") {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    ScrollableTabRow(selectedTabIndex = seasons.indexOf(selectedSeasonSubCategory)) {
+                        seasons.forEach { s ->
+                            Tab(
+                                selected = selectedSeasonSubCategory == s,
+                                onClick = { selectedSeasonSubCategory = s },
+                                text = { Text(s, fontSize = 11.sp) }
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(filtered) { item ->
@@ -493,7 +524,8 @@ fun RoutineLibraryDialog(onDismiss: () -> Unit, onAddRoutineFromLibrary: (Routin
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text("⭐ ${item.starsReward} étoile(s)", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                                    val badge = if (item.frequency == RoutineFrequency.SEASONAL && item.season != null) "${item.season.displayName} 🍂" else item.frequency.displayName
+                                    Text("$badge • ⭐ ${item.starsReward} étoile(s)", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
                                 }
                                 Button(onClick = { focusManager.clearFocus(); onAddRoutineFromLibrary(item) }) {
                                     Text("Ajouter", fontSize = 12.sp)
@@ -606,19 +638,56 @@ fun getDefaultRewards(): List<RewardItem> {
 
 fun getLibraryCatalog(): List<RoutineItem> {
     return listOf(
+        // Printemps 🌸
+        RoutineItem(title = "Planter des fleurs ou des graines", icon = "🌸", starsReward = 2, frequency = RoutineFrequency.SEASONAL, season = Season.SPRING),
+        RoutineItem(title = "Nettoyer son vélo pour les beaux jours", icon = "🚲", starsReward = 2, frequency = RoutineFrequency.SEASONAL, season = Season.SPRING),
+        RoutineItem(title = "Grand ménage de printemps de la chambre", icon = "🧺", starsReward = 3, frequency = RoutineFrequency.SEASONAL, season = Season.SPRING),
+        RoutineItem(title = "Ramasser des pâquerettes", icon = "🌼", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.SPRING),
+
+        // Été ☀️
+        RoutineItem(title = "Arroser le jardin et les plantes", icon = "☀️", starsReward = 2, frequency = RoutineFrequency.SEASONAL, season = Season.SUMMER),
+        RoutineItem(title = "Mettre de la crème solaire", icon = "🧴", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.SUMMER),
+        RoutineItem(title = "Mettre sa casquette / chapeau", icon = "🧢", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.SUMMER),
+        RoutineItem(title = "Rincer et ranger les jeux de plage", icon = "🏖️", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.SUMMER),
+
+        // Automne 🍂
+        RoutineItem(title = "Ramasser les feuilles mortes", icon = "🍂", starsReward = 3, frequency = RoutineFrequency.SEASONAL, season = Season.AUTUMN),
+        RoutineItem(title = "Décorer la maison pour l'automne", icon = "🎃", starsReward = 2, frequency = RoutineFrequency.SEASONAL, season = Season.AUTUMN),
+        RoutineItem(title = "Ranger ses bottes de pluie", icon = "🌧️", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.AUTUMN),
+        RoutineItem(title = "Ramasser des châtaignes et marrons", icon = "🌰", starsReward = 2, frequency = RoutineFrequency.SEASONAL, season = Season.AUTUMN),
+
+        // Hiver ❄️
         RoutineItem(title = "Déneiger l'allée / le devant", icon = "❄️", starsReward = 3, frequency = RoutineFrequency.SEASONAL, season = Season.WINTER),
         RoutineItem(title = "Nourrir les oiseaux du jardin", icon = "🐦", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.WINTER),
         RoutineItem(title = "Mettre bonnet, écharpe et gants", icon = "🧣", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.WINTER),
-        RoutineItem(title = "Ramasser les feuilles mortes", icon = "🍂", starsReward = 3, frequency = RoutineFrequency.SEASONAL, season = Season.AUTUMN),
-        RoutineItem(title = "Décorer la maison pour l'automne", icon = "🎃", starsReward = 2, frequency = RoutineFrequency.SEASONAL, season = Season.AUTUMN),
-        RoutineItem(title = "Planter des fleurs ou des graines", icon = "🌸", starsReward = 2, frequency = RoutineFrequency.SEASONAL, season = Season.SPRING),
-        RoutineItem(title = "Grand ménage de printemps", icon = "🧺", starsReward = 3, frequency = RoutineFrequency.SEASONAL, season = Season.SPRING),
-        RoutineItem(title = "Arroser le jardin et les plantes", icon = "☀️", starsReward = 2, frequency = RoutineFrequency.SEASONAL, season = Season.SUMMER),
-        RoutineItem(title = "Mettre de la crème solaire", icon = "🧴", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.SUMMER),
-        RoutineItem(title = "S'habiller tout seul", icon = "👗", starsReward = 1, timeOfDay = TimeOfDay.MORNING),
-        RoutineItem(title = "Se coiffer", icon = "💇", starsReward = 1, timeOfDay = TimeOfDay.MORNING),
-        RoutineItem(title = "Débarrasser la table", icon = "🍽️", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
+        RoutineItem(title = "Préparer un bon chocolat chaud", icon = "☕", starsReward = 1, frequency = RoutineFrequency.SEASONAL, season = Season.WINTER),
+
+        // Autonomie 🏠
+        RoutineItem(title = "Faire son lit", icon = "🛏️", starsReward = 1, timeOfDay = TimeOfDay.MORNING),
+        RoutineItem(title = "Se brosser les dents (Matin)", icon = "🪥", starsReward = 1, timeOfDay = TimeOfDay.MORNING),
+        RoutineItem(title = "Prendre son petit-déjeuner", icon = "🥣", starsReward = 1, timeOfDay = TimeOfDay.MORNING),
+        RoutineItem(title = "S'habiller tout seul", icon = "👕", starsReward = 1, timeOfDay = TimeOfDay.MORNING),
+        RoutineItem(title = "Se coiffer / brosser les cheveux", icon = "💇", starsReward = 1, timeOfDay = TimeOfDay.MORNING),
+        RoutineItem(title = "Boire un grand verre d'eau", icon = "🥛", starsReward = 1, timeOfDay = TimeOfDay.MORNING),
+        RoutineItem(title = "Prendre sa douche / son bain", icon = "🚿", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
+        RoutineItem(title = "Se brosser les dents (Soir)", icon = "🪥", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
+        RoutineItem(title = "Se laver les mains avant de manger", icon = "🧼", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
+
+        // Maison 🧺
+        RoutineItem(title = "Ranger sa chambre et ses jouets", icon = "🧸", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Débarrasser la table après le repas", icon = "🍽️", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
+        RoutineItem(title = "Mettre la table", icon = "🍴", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
+        RoutineItem(title = "Passer le balai ou l'aspirateur", icon = "🧹", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Mettre le linge sale dans le panier", icon = "🧺", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
         RoutineItem(title = "Nourrir l'animal de compagnie", icon = "🐶", starsReward = 2, timeOfDay = TimeOfDay.MORNING),
-        RoutineItem(title = "Préparer son cartable", icon = "🎒", starsReward = 1, timeOfDay = TimeOfDay.EVENING)
+        RoutineItem(title = "Aider à ranger les courses", icon = "🛒", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Ranger ses chaussures et son manteau", icon = "🧥", starsReward = 1, timeOfDay = TimeOfDay.AFTERNOON),
+
+        // École 📚
+        RoutineItem(title = "Faire ses devoirs calmement", icon = "📚", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Préparer son cartable", icon = "🎒", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
+        RoutineItem(title = "Lire un livre pendant 15 minutes", icon = "📖", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
+        RoutineItem(title = "Apprendre sa poésie ou ses leçons", icon = "🧠", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Ranger son bureau d'école", icon = "✏️", starsReward = 1, timeOfDay = TimeOfDay.AFTERNOON)
     )
 }
