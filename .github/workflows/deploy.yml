@@ -48,30 +48,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database via Firebase CLI
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      - name: Mettre à jour Firebase Database via REST API (Sans token)
         run: |
-          RUN_NUM=${{ github.run_number }}
-          cat << EOF > parent_update.json
-          {
-            "latestVersionCode": 99,
-            "latestVersionName": "2.0-TEST",
-            "downloadUrl": "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk",
-            "releaseNotes": "Test forcé : Nouvelle version v2.0-TEST disponible 🎉"
-          }
-          EOF
-
-          cat << EOF > child_update.json
-          {
-            "latestVersionCode": 99,
-            "latestVersionName": "2.0-TEST",
-            "downloadUrl": "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk",
-            "releaseNotes": "Test forcé : Nouvelle version v2.0-TEST disponible 🎉"
-          }
-          EOF
-
-          npx -y firebase-tools@latest database:set /app_updates/parent parent_update.json --project launcher-enfant --token "$FIREBASE_TOKEN" --non-interactive
-          npx -y firebase-tools@latest database:set /app_updates/child child_update.json --project launcher-enfant --token "$FIREBASE_TOKEN" --non-interactive
+          PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+          CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
           
-          echo "Base de données Firebase mise à jour avec succès via Firebase CLI !"
+          echo "Mise à jour de Firebase pour le parent..."
+          curl -s -X PATCH -d '{"latestVersionCode": 99, "latestVersionName": "2.0-TEST", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "Test forcé : Nouvelle version v2.0-TEST disponible 🎉"}' "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json"
+          
+          echo "Mise à jour de Firebase pour l'enfant..."
+          curl -s -X PATCH -d '{"latestVersionCode": 99, "latestVersionName": "2.0-TEST", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "Test forcé : Nouvelle version v2.0-TEST disponible 🎉"}' "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json"
+          
+          echo "Base de données Firebase mise à jour avec succès !"
