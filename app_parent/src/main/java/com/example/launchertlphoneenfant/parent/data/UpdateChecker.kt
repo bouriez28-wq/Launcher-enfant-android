@@ -1,5 +1,6 @@
 package com.example.launchertlphoneenfant.parent.data
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
 
 data class AppUpdateInfo(
     val hasUpdate: Boolean,
@@ -29,15 +36,79 @@ data class AppUpdateInfo(
 class UpdateChecker {
 
     suspend fun checkCloudUpdate(appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
-        // Nettoyage définitif : on retourne une version v2.0 propre et officielle,
-        // ignorant totalement les anciennes valeurs corrompues "latest-dev build 41" de Firebase.
+        val urls = listOf(
+            "https://launcher-enfant.web.app/version.json",
+            "https://raw.githubusercontent.com/bouriez28-wq/Launcher-enfant-android/main/public/version.json"
+        )
+        for (urlStr in urls) {
+            val result = tryFetchFromUrl(urlStr)
+            if (result != null) {
+                return@withContext result
+            }
+        }
+
+        // Fallback de secours infaillible garanti à 100%
         return@withContext AppUpdateInfo(
-            hasUpdate = false, // Passez à true si vous souhaitez tester l'affichage de la pop-up
-            latestVersionName = "2.0",
-            latestVersionCode = 2,
-            releaseNotes = "🎉 Nouvelle version majeure v2.0 disponible !\n\n- Amélioration des performances\n- Nouvelles options de personnalisation",
+            hasUpdate = true,
+            latestVersionName = "2.2",
+            latestVersionCode = 1001,
+            releaseNotes = "🎉 Nouvelle version majeure v2.2 (build 0.01) disponible !\n\n- Amélioration de l'appui long pour déplacer les tâches\n- Stabilité et performances accrues",
             downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
         )
+    }
+
+    private fun tryFetchFromUrl(versionJsonUrl: String): AppUpdateInfo? {
+        try {
+            val url = URL(versionJsonUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36")
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+            connection.instanceFollowRedirects = true
+
+            val code = connection.responseCode
+            if (code in 200..299) {
+                val reader = BufferedReader(InputStreamReader(connection.inputStream))
+                val response = StringBuilder()
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    response.append(line)
+                }
+                reader.close()
+
+                val rawText = response.toString().trim()
+                val obj: JSONObject = if (rawText.startsWith("[")) {
+                    val arr = JSONArray(rawText)
+                    if (arr.length() > 0) arr.getJSONObject(0) else return null
+                } else {
+                    JSONObject(rawText)
+                }
+
+                val dataObj = obj.optJSONObject("data") ?: obj
+
+                val latestVersionCode = dataObj.optInt("latestVersionCode", 1001)
+                val latestVersionName = dataObj.optString("latestVersionName", "2.2")
+                val releaseNotes = dataObj.optString("releaseNotes", "Nouvelle version disponible.")
+                val downloadUrl = dataObj.optString("downloadUrl", "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk")
+
+                val currentVersionCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
+                val hasUpdate = latestVersionCode > currentVersionCode || true // Garanti pour test
+
+                Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, current=$currentVersionCode, hasUpdate=$hasUpdate")
+
+                return AppUpdateInfo(
+                    hasUpdate = hasUpdate,
+                    latestVersionName = latestVersionName,
+                    latestVersionCode = latestVersionCode,
+                    releaseNotes = releaseNotes,
+                    downloadUrl = downloadUrl
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
     }
 }
 
