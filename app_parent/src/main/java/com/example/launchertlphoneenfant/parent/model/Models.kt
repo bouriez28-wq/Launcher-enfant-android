@@ -5,6 +5,7 @@ import java.util.UUID
 enum class TimeOfDay(val displayName: String, val icon: String) {
     MORNING("Matin", "🌅"),
     AFTERNOON("Après-midi", "☀️"),
+    AFTER_SCHOOL("Après l'école", "🎒"),
     EVENING("Soir", "🌙")
 }
 

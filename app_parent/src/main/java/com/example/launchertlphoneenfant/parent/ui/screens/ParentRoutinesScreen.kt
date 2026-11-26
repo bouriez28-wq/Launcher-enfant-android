@@ -188,8 +188,8 @@ fun ManageRoutinesList(
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
                 val morningList = dailyList.filter { it.timeOfDay == TimeOfDay.MORNING }
-                val afternoonList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTERNOON && !it.title.lowercase().contains("école") && !it.title.lowercase().contains("devoir") && !it.title.lowercase().contains("cartable") }
-                val afterSchoolList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTERNOON && (it.title.lowercase().contains("école") || it.title.lowercase().contains("devoir") || it.title.lowercase().contains("cartable") || it.title.lowercase().contains("goûter")) }
+                val afternoonList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTERNOON }
+                val afterSchoolList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTER_SCHOOL }
                 val eveningList = dailyList.filter { it.timeOfDay == TimeOfDay.EVENING }
 
                 if (morningList.isNotEmpty()) {
@@ -255,12 +255,22 @@ fun RoutineCard(routine: RoutineItem, onDeleteRoutine: (String) -> Unit) {
             Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(routine.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(routine.title, fontWeight = FontWeight.Bold)
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
+                        val badgeText = if (routine.frequency == RoutineFrequency.SEASONAL && routine.season != null) {
+                            "${routine.season.displayName} 🍂"
+                        } else {
+                            routine.timeOfDay.displayName
+                        }
+                        Text(badgeText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                    }
+                }
                 if (routine.description.isNotBlank()) {
                     Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
+            Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = { onDeleteRoutine(routine.id) }) {
                 Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error)
@@ -398,7 +408,10 @@ fun AddRoutineDialog(defaultFrequency: RoutineFrequency, onDismiss: () -> Unit, 
                     }
                 } else {
                     Text("Moment de la journée :", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         TimeOfDay.entries.forEach { time ->
                             FilterChip(
                                 selected = timeOfDay == time,
@@ -608,12 +621,12 @@ fun AddRewardDialog(onDismiss: () -> Unit, onSave: (RewardItem) -> Unit) {
 fun getDefaultRoutines(): List<RoutineItem> {
     return listOf(
         RoutineItem(id = "def_r_1", title = "Faire son lit", icon = "🛏️", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
-        RoutineItem(id = "def_r_2", title = "Brosser ses dents", icon = "🪥", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
-        RoutineItem(id = "def_r_3", title = "Prendre son petit-déjeuner", icon = "🥣", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
-        RoutineItem(id = "def_r_4", title = "Faire ses devoirs", icon = "📚", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.DAILY, starsReward = 2),
-        RoutineItem(id = "def_r_5", title = "Ranger sa chambre", icon = "🧸", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.WEEKLY, starsReward = 3),
+        RoutineItem(id = "def_r_2", title = "Brosser ses dents (Matin)", icon = "🪥", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
+        RoutineItem(id = "def_r_3", title = "Goûter et détente", icon = "🍏", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.DAILY, starsReward = 1),
+        RoutineItem(id = "def_r_4", title = "Faire ses devoirs", icon = "📚", timeOfDay = TimeOfDay.AFTER_SCHOOL, frequency = RoutineFrequency.DAILY, starsReward = 2),
+        RoutineItem(id = "def_r_5", title = "Ranger ses jouets", icon = "🧸", timeOfDay = TimeOfDay.AFTER_SCHOOL, frequency = RoutineFrequency.DAILY, starsReward = 2),
         RoutineItem(id = "def_r_6", title = "Prendre sa douche", icon = "🚿", timeOfDay = TimeOfDay.EVENING, frequency = RoutineFrequency.DAILY, starsReward = 1),
-        RoutineItem(id = "def_r_7", title = "Grand rangement mensuel", icon = "📦", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.MONTHLY, starsReward = 10)
+        RoutineItem(id = "def_r_7", title = "Brosser ses dents (Soir)", icon = "🪥", timeOfDay = TimeOfDay.EVENING, frequency = RoutineFrequency.DAILY, starsReward = 1)
     )
 }
 
@@ -664,20 +677,20 @@ fun getLibraryCatalog(): List<RoutineItem> {
         RoutineItem(title = "Se laver les mains avant de manger", icon = "🧼", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
 
         // Maison 🧺
-        RoutineItem(title = "Ranger sa chambre et ses jouets", icon = "🧸", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Ranger sa chambre et ses jouets", icon = "🧸", starsReward = 2, timeOfDay = TimeOfDay.AFTER_SCHOOL),
         RoutineItem(title = "Débarrasser la table après le repas", icon = "🍽️", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
         RoutineItem(title = "Mettre la table", icon = "🍴", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
-        RoutineItem(title = "Passer le balai ou l'aspirateur", icon = "🧹", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Passer le balai ou l'aspirateur", icon = "🧹", starsReward = 2, timeOfDay = TimeOfDay.AFTER_SCHOOL),
         RoutineItem(title = "Mettre le linge sale dans le panier", icon = "🧺", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
-        RoutineItem(title = "Nourrir l'animal de compagnie", icon = "🐶", starsReward = 2, timeOfDay = TimeOfDay.MORNING),
-        RoutineItem(title = "Aider à ranger les courses", icon = "🛒", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
-        RoutineItem(title = "Ranger ses chaussures et son manteau", icon = "🧥", starsReward = 1, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Nourrir l'animal de compagnie", icon = "🐶", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Aider à ranger les courses", icon = "🛒", starsReward = 2, timeOfDay = TimeOfDay.AFTER_SCHOOL),
+        RoutineItem(title = "Ranger ses chaussures et son manteau", icon = "🧥", starsReward = 1, timeOfDay = TimeOfDay.AFTER_SCHOOL),
 
         // École 📚
-        RoutineItem(title = "Faire ses devoirs calmement", icon = "📚", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
+        RoutineItem(title = "Faire ses devoirs calmement", icon = "📚", starsReward = 2, timeOfDay = TimeOfDay.AFTER_SCHOOL),
         RoutineItem(title = "Préparer son cartable", icon = "🎒", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
         RoutineItem(title = "Lire un livre pendant 15 minutes", icon = "📖", starsReward = 1, timeOfDay = TimeOfDay.EVENING),
-        RoutineItem(title = "Apprendre sa poésie ou ses leçons", icon = "🧠", starsReward = 2, timeOfDay = TimeOfDay.AFTERNOON),
-        RoutineItem(title = "Ranger son bureau d'école", icon = "✏️", starsReward = 1, timeOfDay = TimeOfDay.AFTERNOON)
+        RoutineItem(title = "Apprendre sa poésie ou ses leçons", icon = "🧠", starsReward = 2, timeOfDay = TimeOfDay.AFTER_SCHOOL),
+        RoutineItem(title = "Ranger son bureau d'école", icon = "✏️", starsReward = 1, timeOfDay = TimeOfDay.AFTER_SCHOOL)
     )
 }
