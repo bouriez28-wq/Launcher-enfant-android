@@ -252,7 +252,7 @@ fun ParentSettingsScreen(
                     onClick = {
                         isCheckingUpdate = true
                         coroutineScope.launch {
-                            val info = updateChecker.checkCloudUpdate(familyCode)
+                            val info = updateChecker.checkCloudUpdate("parent")
                             isCheckingUpdate = false
                             if (info.hasUpdate) {
                                 updateInfoState = info

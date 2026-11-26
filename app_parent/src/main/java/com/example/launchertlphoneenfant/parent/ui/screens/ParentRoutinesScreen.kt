@@ -184,7 +184,7 @@ fun ManageRoutinesList(
 
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (subTab == 1) {
-                // SÉPARATION QUOTIDIENNE : Matin, Après-midi, Après école, Soir
+                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
                 val morningList = dailyList.filter { it.timeOfDay == TimeOfDay.MORNING }
@@ -192,24 +192,36 @@ fun ManageRoutinesList(
                 val afterSchoolList = dailyList.filter { it.timeOfDay == TimeOfDay.AFTER_SCHOOL }
                 val eveningList = dailyList.filter { it.timeOfDay == TimeOfDay.EVENING }
 
-                if (morningList.isNotEmpty()) {
-                    item { Text("🌅 Matin", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) }
+                // 1. Matin
+                item { Text("🌅 Matin", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp)) }
+                if (morningList.isEmpty()) {
+                    item { Text("Aucune tâche le matin.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                } else {
                     items(morningList) { routine -> RoutineCard(routine, onDeleteRoutine) }
                 }
-                if (afternoonList.isNotEmpty()) {
-                    item { Text("☀️ Après-midi", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp)) }
+
+                // 2. Après-midi
+                item { Text("☀️ Après-midi", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
+                if (afternoonList.isEmpty()) {
+                    item { Text("Aucune tâche l'après-midi.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                } else {
                     items(afternoonList) { routine -> RoutineCard(routine, onDeleteRoutine) }
                 }
-                if (afterSchoolList.isNotEmpty()) {
-                    item { Text("🎒 Après l'école", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp)) }
+
+                // 3. Après école
+                item { Text("🎒 Après l'école", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
+                if (afterSchoolList.isEmpty()) {
+                    item { Text("Aucune tâche après l'école.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                } else {
                     items(afterSchoolList) { routine -> RoutineCard(routine, onDeleteRoutine) }
                 }
-                if (eveningList.isNotEmpty()) {
-                    item { Text("🌙 Soir", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp)) }
+
+                // 4. Soir
+                item { Text("🌙 Soir", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
+                if (eveningList.isEmpty()) {
+                    item { Text("Aucune tâche le soir.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                } else {
                     items(eveningList) { routine -> RoutineCard(routine, onDeleteRoutine) }
-                }
-                if (dailyList.isEmpty()) {
-                    item { Text("Aucune routine quotidienne.", color = Color.Gray, fontSize = 13.sp) }
                 }
             } else {
                 val filteredRoutines = when (subTab) {
@@ -255,22 +267,12 @@ fun RoutineCard(routine: RoutineItem, onDeleteRoutine: (String) -> Unit) {
             Text(routine.icon, style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(routine.title, fontWeight = FontWeight.Bold)
-                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
-                        val badgeText = if (routine.frequency == RoutineFrequency.SEASONAL && routine.season != null) {
-                            "${routine.season.displayName} 🍂"
-                        } else {
-                            routine.timeOfDay.displayName
-                        }
-                        Text(badgeText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
-                    }
-                }
+                Text(routine.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 if (routine.description.isNotBlank()) {
                     Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = { onDeleteRoutine(routine.id) }) {
                 Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colorScheme.error)
@@ -621,10 +623,10 @@ fun AddRewardDialog(onDismiss: () -> Unit, onSave: (RewardItem) -> Unit) {
 fun getDefaultRoutines(): List<RoutineItem> {
     return listOf(
         RoutineItem(id = "def_r_1", title = "Faire son lit", icon = "🛏️", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
-        RoutineItem(id = "def_r_2", title = "Brosser ses dents (Matin)", icon = "🪥", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
+        RoutineItem(id = "def_r_2", title = "Brosser ses dents", icon = "🪥", timeOfDay = TimeOfDay.MORNING, frequency = RoutineFrequency.DAILY, starsReward = 1),
         RoutineItem(id = "def_r_3", title = "Goûter et détente", icon = "🍏", timeOfDay = TimeOfDay.AFTERNOON, frequency = RoutineFrequency.DAILY, starsReward = 1),
         RoutineItem(id = "def_r_4", title = "Faire ses devoirs", icon = "📚", timeOfDay = TimeOfDay.AFTER_SCHOOL, frequency = RoutineFrequency.DAILY, starsReward = 2),
-        RoutineItem(id = "def_r_5", title = "Ranger ses jouets", icon = "🧸", timeOfDay = TimeOfDay.AFTER_SCHOOL, frequency = RoutineFrequency.DAILY, starsReward = 2),
+        RoutineItem(id = "def_r_5", title = "Ranger sa chambre", icon = "🧸", timeOfDay = TimeOfDay.AFTER_SCHOOL, frequency = RoutineFrequency.DAILY, starsReward = 2),
         RoutineItem(id = "def_r_6", title = "Prendre sa douche", icon = "🚿", timeOfDay = TimeOfDay.EVENING, frequency = RoutineFrequency.DAILY, starsReward = 1),
         RoutineItem(id = "def_r_7", title = "Brosser ses dents (Soir)", icon = "🪥", timeOfDay = TimeOfDay.EVENING, frequency = RoutineFrequency.DAILY, starsReward = 1)
     )

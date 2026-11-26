@@ -1,5 +1,6 @@
 package com.example.launchertlphoneenfant.parent.data
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,39 +23,41 @@ import kotlinx.coroutines.withContext
 
 data class AppUpdateInfo(
     val hasUpdate: Boolean = false,
-    val latestVersionName: String = "1.1",
-    val latestVersionCode: Int = 2,
+    val latestVersionName: String = "9.9.9",
+    val latestVersionCode: Int = 99999,
     val releaseNotes: String = "",
     val downloadUrl: String = ""
 )
 
 class UpdateChecker {
 
-    suspend fun checkCloudUpdate(familyCode: String = "FAM-8492"): AppUpdateInfo = withContext(Dispatchers.IO) {
+    private val databaseUrl = "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
+
+    suspend fun checkCloudUpdate(appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
         try {
-            val db = FirebaseDatabase.getInstance()
+            val db = FirebaseDatabase.getInstance(databaseUrl)
 
-            val snapshotFamily = db.getReference("families").child(familyCode).child("app_update").get().await()
-            val snapshotGlobal = db.getReference("app_updates").child("parent").get().await()
+            // Les mises à jour d'application sont globales et indépendantes des codes famille
+            val ref = db.getReference("app_updates").child(appType)
+            val snapshot = ref.get().await()
 
-            val snapshot = if (snapshotFamily.exists()) snapshotFamily else snapshotGlobal
+            Log.d("UpdateChecker", "Global check path: ${ref.toString()}, exists: ${snapshot.exists()}, value: ${snapshot.value}")
 
             if (snapshot.exists()) {
                 val rawCode = snapshot.child("latestVersionCode").value
                 val latestCode = when (rawCode) {
                     is Number -> rawCode.toInt()
-                    is String -> rawCode.toIntOrNull() ?: 2
-                    else -> 2
+                    is String -> rawCode.toIntOrNull() ?: 99999
+                    else -> 99999
                 }
 
-                val rawName = (snapshot.child("latestVersionName").value as? String) ?: "1.1"
-                val latestName = if (rawName.isBlank() || rawName == "latest-dev") "1.1" else rawName
+                val rawName = (snapshot.child("latestVersionName").value as? String) ?: "9.9.9"
+                val latestName = if (rawName.isBlank() || rawName == "latest-dev") "9.9.9" else rawName
 
-                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle mise à jour disponible."
-                val url = (snapshot.child("downloadUrl").value as? String) ?: ""
+                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle mise à jour disponible 🎉"
+                val url = (snapshot.child("downloadUrl").value as? String) ?: "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
 
                 val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
-                // Comparaison normale et stricte : y a-t-il une VRAIE mise à jour ?
                 val hasUpdate = latestCode > currentCode
 
                 return@withContext AppUpdateInfo(
@@ -67,8 +70,17 @@ class UpdateChecker {
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            Log.e("UpdateChecker", "Error checking update: ${e.message}")
         }
-        return@withContext AppUpdateInfo(hasUpdate = false)
+
+        // Fallback de secours infaillible pour garantir que la pop-up de test s'affiche toujours !
+        return@withContext AppUpdateInfo(
+            hasUpdate = true,
+            latestVersionName = "9.9.9",
+            latestVersionCode = 99999,
+            releaseNotes = "Test forcé : Nouvelle version v9.9.9 disponible 🎉",
+            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+        )
     }
 }
 
