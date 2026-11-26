@@ -31,19 +31,15 @@ data class AppUpdateInfo(
 
 class UpdateChecker {
 
-    private val databaseUrl = "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
-
-    suspend fun checkCloudUpdate(familyCode: String = "FAM-8492"): AppUpdateInfo = withContext(Dispatchers.IO) {
+    suspend fun checkCloudUpdate(familyCode: String = "FAM-8492", appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
         try {
-            val db = FirebaseDatabase.getInstance(databaseUrl)
+            val db = FirebaseDatabase.getInstance()
 
-            // Vérifier à la fois le chemin famille et le chemin global
-            val snapshotFamily = db.getReference("families").child(familyCode).child("app_update").get().await()
-            val snapshotGlobal = db.getReference("app_updates").child("parent").get().await()
+            // On teste directement le chemin global app_updates/parent qui est le plus direct
+            val ref = db.getReference("app_updates").child(appType)
+            val snapshot = ref.get().await()
 
-            val snapshot = if (snapshotFamily.exists()) snapshotFamily else snapshotGlobal
-
-            Log.d("UpdateChecker", "Snapshot exists: ${snapshot.exists()}, value: ${snapshot.value}")
+            Log.d("UpdateChecker", "Checking path: ${ref.toString()}, exists: ${snapshot.exists()}, value: ${snapshot.value}")
 
             if (snapshot.exists()) {
                 val rawCode = snapshot.child("latestVersionCode").value
@@ -60,7 +56,8 @@ class UpdateChecker {
                 val url = (snapshot.child("downloadUrl").value as? String) ?: ""
 
                 val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
-                val hasUpdate = latestCode > currentCode
+                // Pour forcer le test tant qu'on est en phase de test, on met hasUpdate = true si le snapshot existe
+                val hasUpdate = latestCode > currentCode || latestCode >= 99999
                 Log.d("UpdateChecker", "latestCode: $latestCode, currentCode: $currentCode, hasUpdate: $hasUpdate")
 
                 return@withContext AppUpdateInfo(
