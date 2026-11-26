@@ -62,6 +62,15 @@ class ParentMainActivity : ComponentActivity() {
             }
         }
 
+        // Planification de la vérification des mises à jour en arrière-plan (WorkManager)
+        val updateWorkRequest = androidx.work.PeriodicWorkRequestBuilder<com.example.launchertlphoneenfant.parent.service.UpdateCheckWorker>(4, java.util.concurrent.TimeUnit.HOURS)
+            .build()
+        androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "UpdateCheckWork",
+            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            updateWorkRequest
+        )
+
         setContent {
             MaterialTheme {
                 Surface(
