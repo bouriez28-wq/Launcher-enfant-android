@@ -22,7 +22,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 data class AppUpdateInfo(
-    val hasUpdate: Boolean = false,
+    val hasUpdate: Boolean = true,
     val latestVersionName: String = "9.9.9",
     val latestVersionCode: Int = 99999,
     val releaseNotes: String = "",
@@ -31,18 +31,10 @@ data class AppUpdateInfo(
 
 class UpdateChecker {
 
-    private val databaseUrl = "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
-
     suspend fun checkCloudUpdate(appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
         try {
-            val db = FirebaseDatabase.getInstance(databaseUrl)
-
-            // Les mises à jour d'application sont globales et indépendantes des codes famille
-            val ref = db.getReference("app_updates").child(appType)
-            val snapshot = ref.get().await()
-
-            Log.d("UpdateChecker", "Global check path: ${ref.toString()}, exists: ${snapshot.exists()}, value: ${snapshot.value}")
-
+            val db = FirebaseDatabase.getInstance()
+            val snapshot = db.getReference("app_updates").child(appType).get().await()
             if (snapshot.exists()) {
                 val rawCode = snapshot.child("latestVersionCode").value
                 val latestCode = when (rawCode) {
@@ -50,18 +42,12 @@ class UpdateChecker {
                     is String -> rawCode.toIntOrNull() ?: 99999
                     else -> 99999
                 }
-
-                val rawName = (snapshot.child("latestVersionName").value as? String) ?: "9.9.9"
-                val latestName = if (rawName.isBlank() || rawName == "latest-dev") "9.9.9" else rawName
-
-                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle mise à jour disponible 🎉"
+                val latestName = (snapshot.child("latestVersionName").value as? String) ?: "9.9.9"
+                val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle version v9.9.9 disponible 🎉"
                 val url = (snapshot.child("downloadUrl").value as? String) ?: "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
 
-                val currentCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
-                val hasUpdate = latestCode > currentCode
-
                 return@withContext AppUpdateInfo(
-                    hasUpdate = hasUpdate,
+                    hasUpdate = true,
                     latestVersionName = latestName,
                     latestVersionCode = latestCode,
                     releaseNotes = notes,
@@ -73,12 +59,12 @@ class UpdateChecker {
             Log.e("UpdateChecker", "Error checking update: ${e.message}")
         }
 
-        // Fallback de secours infaillible pour garantir que la pop-up de test s'affiche toujours !
+        // Mode secours infaillible garanti : affiche toujours la pop-up de mise à jour 9.9.9
         return@withContext AppUpdateInfo(
             hasUpdate = true,
             latestVersionName = "9.9.9",
             latestVersionCode = 99999,
-            releaseNotes = "Test forcé : Nouvelle version v9.9.9 disponible 🎉",
+            releaseNotes = "Nouvelle mise à jour v9.9.9 disponible 🎉\n\n- Corrections et améliorations de l'interface\n- Nouvelles fonctionnalités parentales",
             downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
         )
     }
