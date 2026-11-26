@@ -61,6 +61,7 @@ fun ParentSettingsScreen(
     var updateInfoState by remember { mutableStateOf<AppUpdateInfo?>(null) }
     var downloadProgressState by remember { mutableStateOf<Int?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
+    var showUpToDateDialog by remember { mutableStateOf(false) }
 
     var childName by remember { mutableStateOf("Mon Champion") }
     var parentPin by remember { mutableStateOf("1234") }
@@ -256,7 +257,7 @@ fun ParentSettingsScreen(
                             if (info.hasUpdate) {
                                 updateInfoState = info
                             } else {
-                                Toast.makeText(context, "Vous utilisez déjà la dernière version !", Toast.LENGTH_LONG).show()
+                                showUpToDateDialog = true
                             }
                         }
                     },
@@ -527,6 +528,20 @@ fun ParentSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showQrDialog = false }) { Text("Fermer") }
+            }
+        )
+    }
+
+    // Dialogue "Votre application est à jour"
+    if (showUpToDateDialog) {
+        AlertDialog(
+            onDismissRequest = { showUpToDateDialog = false },
+            title = { Text("✅ Application à jour") },
+            text = { Text("Votre application est déjà à jour !\nVersion v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})") },
+            confirmButton = {
+                Button(onClick = { showUpToDateDialog = false }) {
+                    Text("OK")
+                }
             }
         )
     }
