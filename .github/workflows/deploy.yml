@@ -34,6 +34,22 @@ jobs:
         env:
           BUILD_NUMBER: ${{ github.run_number }}
 
+      - name: Générer public/version.json dynamique (Run + 1)
+        run: |
+          RUN_NUM=${{ github.run_number }}
+          NEXT_NUM=$((RUN_NUM + 1))
+          PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+          
+          cat << EOF > public/version.json
+          {
+            "latestVersionCode": $NEXT_NUM,
+            "latestVersionName": "1.$NEXT_NUM",
+            "downloadUrl": "$PARENT_URL",
+            "releaseNotes": "🎉 Nouvelle version majeure v1.$NEXT_NUM disponible !\n\n- Mises à jour automatiques et continues"
+          }
+          EOF
+          echo "version.json généré avec la version $NEXT_NUM (v1.$NEXT_NUM)"
+
       - name: Publier la Release GitHub (latest-dev)
         uses: softprops/action-gh-release@v2
         with:
@@ -45,25 +61,22 @@ jobs:
           files: |
             app_enfant/build/outputs/apk/debug/app_enfant-debug.apk
             app_parent/build/outputs/apk/debug/app_parent-debug.apk
+            public/version.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database (Mode Production Normal)
+      - name: Mettre à jour Firebase Database (Version cloud = Run + 1)
         run: |
           RUN_NUM=${{ github.run_number }}
+          NEXT_NUM=$((RUN_NUM + 1))
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
           
-          PAYLOAD='{"latestVersionCode": '$RUN_NUM', "latestVersionName": "2.0", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "🎉 Nouvelle version majeure v2.0 disponible !\n\n- Amélioration des performances et correction de bugs"}'
-          CHILD_PAYLOAD='{"latestVersionCode": '$RUN_NUM', "latestVersionName": "2.0", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "🎉 Nouvelle version majeure v2.0 disponible !\n\n- Amélioration des performances et correction de bugs"}'
+          PAYLOAD='{"latestVersionCode": '$NEXT_NUM', "latestVersionName": "1.'$NEXT_NUM'", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "🎉 Nouvelle version v1.'$NEXT_NUM' disponible !"}'
+          CHILD_PAYLOAD='{"latestVersionCode": '$NEXT_NUM', "latestVersionName": "1.'$NEXT_NUM'", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "🎉 Nouvelle version v1.'$NEXT_NUM' disponible !"}'
 
-          echo "Mise à jour families/FAM-8492/app_update..."
           curl -s -X PATCH -d "$PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/families/FAM-8492/app_update.json"
-          
-          echo "Mise à jour app_updates/parent..."
           curl -s -X PATCH -d "$PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json"
-
-          echo "Mise à jour app_updates/child..."
           curl -s -X PATCH -d "$CHILD_PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json"
           
-          echo "Base de données Firebase mise à jour en mode production !"
+          echo "Base de données Firebase et GitHub Release synchronisées pour déclencher l'update automatique !"
