@@ -23,8 +23,8 @@ import kotlinx.coroutines.withContext
 
 data class AppUpdateInfo(
     val hasUpdate: Boolean = false,
-    val latestVersionName: String = "1.0",
-    val latestVersionCode: Int = 1,
+    val latestVersionName: String = "1.1",
+    val latestVersionCode: Int = 2,
     val releaseNotes: String = "",
     val downloadUrl: String = ""
 )
@@ -39,12 +39,15 @@ class UpdateChecker {
             val snapshot = db.getReference("app_updates").child(appType).get().await()
 
             if (snapshot.exists()) {
-                val latestCode = (snapshot.child("latestVersionCode").value as? Long)?.toInt() ?: 1
-                val latestName = (snapshot.child("latestVersionName").value as? String) ?: "1.0"
+                val latestCode = (snapshot.child("latestVersionCode").value as? Long)?.toInt() ?: 2
+                val rawName = (snapshot.child("latestVersionName").value as? String) ?: "1.1"
+                val latestName = if (rawName.isBlank() || rawName == "latest-dev") "1.1" else rawName
+
                 val notes = (snapshot.child("releaseNotes").value as? String) ?: "Nouvelle mise à jour disponible."
                 val url = (snapshot.child("downloadUrl").value as? String) ?: ""
 
                 val currentCode = BuildConfig.VERSION_CODE
+                // S'assurer qu'il y a une vraie mise à jour si latestCode > currentCode
                 val hasUpdate = latestCode > currentCode
 
                 return@withContext AppUpdateInfo(
