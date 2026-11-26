@@ -34,7 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.example.launchertlphoneenfant.parent.ui.screens.ParentControlScreen
+import com.example.launchertlphoneenfant.parent.ui.screens.ParentHomeScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentRoutinesScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentStoriesScreen
 import com.example.launchertlphoneenfant.parent.ui.screens.ParentValidationScreen
@@ -144,8 +144,8 @@ fun ParentAppNavigation() {
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.Dashboard, contentDescription = "Contrôle") },
-                    label = { Text("Contrôle") }
+                    icon = { Icon(Icons.Default.Dashboard, contentDescription = "Accueil") },
+                    label = { Text("Accueil") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
@@ -174,24 +174,9 @@ fun ParentAppNavigation() {
         ) { page ->
             Box(modifier = Modifier.fillMaxSize()) {
                 when (page) {
-                    0 -> ParentControlScreen(
+                    0 -> ParentHomeScreen(
                         familyCode = familyCode,
-                        onFamilyCodeChange = { familyCode = it },
-                        dailyLimit = dailyLimit,
-                        usedMinutes = usedMinutes,
-                        bonusMinutes = bonusMinutes,
-                        onSetDailyLimit = { limit ->
-                            database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(limit)
-                        },
-                        onAddBonusMinutes = { bonus ->
-                            database.getReference("families").child(familyCode).child("bonusMinutesToday").setValue(bonusMinutes + bonus)
-                        },
-                        onLockDevice = {
-                            database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(0)
-                        },
-                        onUnlockDevice = {
-                            database.getReference("families").child(familyCode).child("dailyLimitMinutes").setValue(60)
-                        }
+                        onFamilyCodeChange = { familyCode = it }
                     )
                     1 -> ParentValidationScreen(familyCode = familyCode)
                     2 -> ParentRoutinesScreen(familyCode = familyCode)
