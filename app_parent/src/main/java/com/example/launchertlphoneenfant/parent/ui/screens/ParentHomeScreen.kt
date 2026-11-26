@@ -1,6 +1,7 @@
 package com.example.launchertlphoneenfant.parent.ui.screens
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -9,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,11 +26,15 @@ import androidx.compose.ui.unit.sp
 import com.example.launchertlphoneenfant.parent.model.RewardClaimHistory
 import com.example.launchertlphoneenfant.parent.model.RoutineFrequency
 import com.example.launchertlphoneenfant.parent.model.RoutineItem
+import com.example.launchertlphoneenfant.parent.model.StarHistoryItem
 import com.example.launchertlphoneenfant.parent.model.StickerMessage
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ParentHomeScreen(
@@ -41,10 +47,12 @@ fun ParentHomeScreen(
     var pendingRewards by remember { mutableStateOf<List<RewardClaimHistory>>(emptyList()) }
     var allRoutines by remember { mutableStateOf<List<RoutineItem>>(emptyList()) }
     var weeklyStars by remember { mutableStateOf(listOf(0, 0, 0, 0, 0, 0, 0)) }
+    var starHistoryList by remember { mutableStateOf<List<StarHistoryItem>>(emptyList()) }
 
     var showResetStarsDialog by remember { mutableStateOf(false) }
     var showResetStatsDialog by remember { mutableStateOf(false) }
     var sentStickerMsg by remember { mutableStateOf<String?>(null) }
+    var isHistoryExpanded by remember { mutableStateOf(false) }
 
     // Dialog ajustement étoiles (+ / - avec commentaire)
     var showStarDialog by remember { mutableStateOf(false) }
@@ -102,6 +110,24 @@ fun ParentHomeScreen(
                         list[i] = (snapshot.child(i.toString()).value as? Long)?.toInt() ?: 0
                     }
                     weeklyStars = list
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+
+            familyRef.child("starHistory").addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val list = mutableListOf<StarHistoryItem>()
+                    for (child in snapshot.children) {
+                        val item = StarHistoryItem(
+                            id = child.child("id").getValue(String::class.java) ?: "",
+                            title = child.child("title").getValue(String::class.java) ?: "",
+                            amount = (child.child("amount").value as? Long)?.toInt() ?: 0,
+                            comment = child.child("comment").getValue(String::class.java) ?: "",
+                            timestamp = child.child("timestamp").getValue(Long::class.java) ?: System.currentTimeMillis()
+                        )
+                        list.add(item)
+                    }
+                    starHistoryList = list.sortedByDescending { it.timestamp }
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
@@ -200,7 +226,7 @@ fun ParentHomeScreen(
             }
         }
 
-        // 2. Statistiques de progression
+        // 2. Statistiques de progression & Étoiles de la semaine avec menu déroulant des détails
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -279,7 +305,7 @@ fun ParentHomeScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = "Étoiles gagnées cette semaine (Réinitialisé dimanche soir) :", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(text = "Étoiles gagnées cette semaine :", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val daysOfWeekLabels = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
@@ -316,6 +342,57 @@ fun ParentHomeScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Menu déroulant / Toggle pour voir le détail des étoiles gagnées (Tâches accomplies ou gain des parents avec commentaires)
+                OutlinedCard(
+                    onClick = { isHistoryExpanded = !isHistoryExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("📜 Détails des étoiles gagnées (${starHistoryList.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+
+                        AnimatedVisibility(visible = isHistoryExpanded) {
+                            Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if (starHistoryList.isEmpty()) {
+                                    Text("Aucun historique pour le moment.", fontSize = 12.sp, color = Color.Gray)
+                                } else {
+                                    starHistoryList.take(15).forEach { history ->
+                                        val dateStr = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(history.timestamp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(history.title, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                if (history.comment.isNotBlank()) {
+                                                    Text(history.comment, fontSize = 11.sp, color = Color.Gray)
+                                                }
+                                                Text(dateStr, fontSize = 10.sp, color = Color.LightGray)
+                                            }
+                                            Text(
+                                                text = if (history.amount >= 0) "+${history.amount} ⭐" else "${history.amount} ⭐",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = if (history.amount >= 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = Color.LightGray.copy(alpha = 0.5f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
                 OutlinedButton(
                     onClick = { showResetStatsDialog = true },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC62828)),
@@ -326,7 +403,7 @@ fun ParentHomeScreen(
             }
         }
 
-        // 3. Tâches en attente de validation (Toujours visible avec état vide propre)
+        // 3. Tâches en attente de validation
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -352,6 +429,7 @@ fun ParentHomeScreen(
                                         val familyRef = database.getReference("families").child(familyCode)
                                         familyRef.child("totalStars").setValue(totalStars + task.starsReward)
 
+                                        // Mettre à jour les étoiles de la semaine
                                         val cal = java.util.Calendar.getInstance()
                                         val calDay = cal.get(java.util.Calendar.DAY_OF_WEEK)
                                         val dayIndex = if (calDay == java.util.Calendar.SUNDAY) 6 else calDay - 2
@@ -359,6 +437,17 @@ fun ParentHomeScreen(
                                             val currentDayStars = weeklyStars.getOrElse(dayIndex) { 0 }
                                             familyRef.child("weeklyStars").child(dayIndex.toString()).setValue(currentDayStars + task.starsReward)
                                         }
+
+                                        // Ajouter à l'historique des étoiles
+                                        val historyId = familyRef.child("starHistory").push().key ?: java.util.UUID.randomUUID().toString()
+                                        val starHistoryItem = StarHistoryItem(
+                                            id = historyId,
+                                            title = "Tâche : ${task.title}",
+                                            amount = task.starsReward,
+                                            comment = "Validée par les parents",
+                                            timestamp = System.currentTimeMillis()
+                                        )
+                                        familyRef.child("starHistory").child(historyId).setValue(starHistoryItem)
 
                                         val updated = allRoutines.map { if (it.id == task.id) it.copy(isPendingValidation = false, isCompleted = true) else it }
                                         familyRef.child("routines").setValue(updated)
@@ -375,7 +464,7 @@ fun ParentHomeScreen(
             }
         }
 
-        // 4. Récompenses en attente de validation (Toujours visible avec état vide propre)
+        // 4. Récompenses en attente de validation
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -477,7 +566,7 @@ fun ParentHomeScreen(
                     OutlinedTextField(
                         value = starInputComment,
                         onValueChange = { starInputComment = it },
-                        label = { Text("Commentaire / Raison") }
+                        label = { Text("Commentaire / Raison (ex: Super aide)") }
                     )
                 }
             },
@@ -486,10 +575,34 @@ fun ParentHomeScreen(
                     onClick = {
                         val amount = starInputAmount.toIntOrNull() ?: 0
                         if (amount > 0) {
+                            val familyRef = database.getReference("families").child(familyCode)
                             val newTotal = if (starDialogMode) totalStars + amount else (totalStars - amount).coerceAtLeast(0)
-                            database.getReference("families").child(familyCode).child("totalStars").setValue(newTotal)
+                            familyRef.child("totalStars").setValue(newTotal)
+
+                            // Mettre à jour les étoiles de la semaine si ajout
+                            if (starDialogMode) {
+                                val cal = java.util.Calendar.getInstance()
+                                val calDay = cal.get(java.util.Calendar.DAY_OF_WEEK)
+                                val dayIndex = if (calDay == java.util.Calendar.SUNDAY) 6 else calDay - 2
+                                if (dayIndex in 0..6) {
+                                    val currentDayStars = weeklyStars.getOrElse(dayIndex) { 0 }
+                                    familyRef.child("weeklyStars").child(dayIndex.toString()).setValue(currentDayStars + amount)
+                                }
+                            }
+
+                            // Ajouter à l'historique des étoiles
+                            val historyId = familyRef.child("starHistory").push().key ?: java.util.UUID.randomUUID().toString()
+                            val starHistoryItem = StarHistoryItem(
+                                id = historyId,
+                                title = if (starDialogMode) "Bonus Parents (+)" else "Ajustement parents (-)",
+                                amount = if (starDialogMode) amount else -amount,
+                                comment = starInputComment.ifBlank { "Action des parents" },
+                                timestamp = System.currentTimeMillis()
+                            )
+                            familyRef.child("starHistory").child(historyId).setValue(starHistoryItem)
+
                             showStarDialog = false
-                            Toast.makeText(context, "Solde mis à jour (${if (starDialogMode) "+$amount" else "-$amount"} ⭐)", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Solde mis à jour !", Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) {
@@ -531,7 +644,7 @@ fun ParentHomeScreen(
         AlertDialog(
             onDismissRequest = { showResetStatsDialog = false },
             title = { Text("Réinitialiser les statistiques ?") },
-            text = { Text("Voulez-vous vraiment réinitialiser toutes les statistiques de progression et les étoiles de la semaine à zéro ?") },
+            text = { Text("Voulez-vous vraiment réinitialiser toutes les statistiques de progression, les étoiles de la semaine et l'historique ?") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -539,6 +652,7 @@ fun ParentHomeScreen(
                         val resetRoutines = allRoutines.map { it.copy(isCompleted = false, isPendingValidation = false) }
                         familyRef.child("routines").setValue(resetRoutines)
                         familyRef.child("weeklyStars").setValue(listOf(0, 0, 0, 0, 0, 0, 0))
+                        familyRef.child("starHistory").removeValue()
                         showResetStatsDialog = false
                         Toast.makeText(context, "Statistiques réinitialisées", Toast.LENGTH_SHORT).show()
                     },

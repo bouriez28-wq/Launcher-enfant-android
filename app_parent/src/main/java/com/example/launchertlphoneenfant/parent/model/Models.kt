@@ -63,3 +63,11 @@ data class StickerMessage(
     val timestamp: Long = System.currentTimeMillis(),
     val isReadByChild: Boolean = false
 )
+
+data class StarHistoryItem(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String = "",
+    val amount: Int = 0,
+    val comment: String = "",
+    val timestamp: Long = System.currentTimeMillis()
+)
