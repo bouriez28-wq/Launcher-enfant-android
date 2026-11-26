@@ -30,9 +30,11 @@ data class AppUpdateInfo(
 
 class UpdateChecker {
 
+    private val databaseUrl = "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app"
+
     suspend fun checkCloudUpdate(appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
         try {
-            val db = FirebaseDatabase.getInstance()
+            val db = FirebaseDatabase.getInstance(databaseUrl)
             val snapshot = db.getReference("app_updates").child(appType).get().await()
 
             if (snapshot.exists()) {
