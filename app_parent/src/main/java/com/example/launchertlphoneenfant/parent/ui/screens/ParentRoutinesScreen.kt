@@ -2,10 +2,12 @@ package com.example.launchertlphoneenfant.parent.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -38,6 +40,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.delay
 
 @Composable
 fun ParentRoutinesScreen(familyCode: String) {
@@ -169,6 +172,18 @@ fun ManageRoutinesList(
     var showAddDialog by remember { mutableStateOf(false) }
     var showLibraryDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val listState = rememberLazyListState()
+    var autoScrollSpeed by remember { mutableFloatStateOf(0f) }
+
+    // Boucle d'auto-défilement fluide de la page lors du drag & drop
+    LaunchedEffect(autoScrollSpeed) {
+        if (autoScrollSpeed != 0f) {
+            while (autoScrollSpeed != 0f) {
+                listState.scrollBy(autoScrollSpeed)
+                delay(16L)
+            }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         ScrollableTabRow(selectedTabIndex = subTab, modifier = Modifier.fillMaxWidth()) {
@@ -193,11 +208,12 @@ fun ManageRoutinesList(
         Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (subTab == 1) {
-                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES AVEC Z-INDEX AU PREMIER PLAN
+                // SÉPARATION QUOTIDIENNE : 4 ESPACES DISTINCTS TOUJOURS VISIBLES AVEC AUTO-SCROLL
                 val dailyList = routines.filter { it.frequency == RoutineFrequency.DAILY }
 
                 val morningList = dailyList.filter { it.timeOfDay == TimeOfDay.MORNING }
@@ -208,40 +224,40 @@ fun ManageRoutinesList(
                 // 1. Matin
                 item { Text("🌅 Matin", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp)) }
                 if (morningList.isEmpty()) {
-                    item { Text("Aucune tâche le matin. (Appui long puis glisser)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche le matin. (Appui long + glisser avec auto-scroll)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(morningList, key = { it.id }) { routine ->
-                        RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime)
+                        RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime, onAutoScroll = { speed -> autoScrollSpeed = speed })
                     }
                 }
 
                 // 2. Après-midi
                 item { Text("☀️ Après-midi", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (afternoonList.isEmpty()) {
-                    item { Text("Aucune tâche l'après-midi. (Appui long puis glisser)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche l'après-midi. (Appui long + glisser avec auto-scroll)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(afternoonList, key = { it.id }) { routine ->
-                        RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime)
+                        RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime, onAutoScroll = { speed -> autoScrollSpeed = speed })
                     }
                 }
 
                 // 3. Après école
                 item { Text("🎒 Après l'école", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (afterSchoolList.isEmpty()) {
-                    item { Text("Aucune tâche après l'école. (Appui long puis glisser)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche après l'école. (Appui long + glisser avec auto-scroll)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(afterSchoolList, key = { it.id }) { routine ->
-                        RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime)
+                        RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime, onAutoScroll = { speed -> autoScrollSpeed = speed })
                     }
                 }
 
                 // 4. Soir
                 item { Text("🌙 Soir", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (eveningList.isEmpty()) {
-                    item { Text("Aucune tâche le soir. (Appui long puis glisser)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
+                    item { Text("Aucune tâche le soir. (Appui long + glisser avec auto-scroll)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) }
                 } else {
                     items(eveningList, key = { it.id }) { routine ->
-                        RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime)
+                        RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime, onAutoScroll = { speed -> autoScrollSpeed = speed })
                     }
                 }
             } else {
@@ -253,7 +269,7 @@ fun ManageRoutinesList(
                     else -> routines
                 }
                 items(filteredRoutines, key = { it.id }) { routine ->
-                    RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime)
+                    RoutineCard(routine, onDeleteRoutine, onUpdateRoutineTime, onAutoScroll = { speed -> autoScrollSpeed = speed })
                 }
             }
         }
@@ -286,7 +302,8 @@ fun ManageRoutinesList(
 fun RoutineCard(
     routine: RoutineItem,
     onDeleteRoutine: (String) -> Unit,
-    onUpdateRoutineTime: (String, TimeOfDay) -> Unit
+    onUpdateRoutineTime: (String, TimeOfDay) -> Unit,
+    onAutoScroll: (Float) -> Unit
 ) {
     val categories = listOf(TimeOfDay.MORNING, TimeOfDay.AFTERNOON, TimeOfDay.AFTER_SCHOOL, TimeOfDay.EVENING)
     var offsetY by remember { mutableFloatStateOf(0f) }
@@ -313,23 +330,35 @@ fun RoutineCard(
                     onDrag = { change, dragAmount ->
                         change.consume()
                         offsetY += dragAmount.y
+
+                        // Défilement automatique de la page selon la position verticale du doigt
+                        val yPos = change.position.y
+                        if (yPos < 150f) {
+                            onAutoScroll(-35f) // Défiler vers le haut
+                        } else if (yPos > 1100f) {
+                            onAutoScroll(35f) // Défiler vers le bas
+                        } else {
+                            onAutoScroll(0f)
+                        }
                     },
                     onDragEnd = {
                         isDragging = false
+                        onAutoScroll(0f)
                         val delta = offsetY
                         offsetY = 0f
 
                         val currentIndex = categories.indexOf(routine.timeOfDay)
-                        // Glissement vers le haut ou le bas pour changer de catégorie de manière fluide
-                        if (delta < -60f && currentIndex > 0) {
+                        // Déplacement fluide vers le haut ou le bas entre les catégories
+                        if (delta < -50f && currentIndex > 0) {
                             onUpdateRoutineTime(routine.id, categories[currentIndex - 1])
-                        } else if (delta > 60f && currentIndex < categories.size - 1) {
+                        } else if (delta > 50f && currentIndex < categories.size - 1) {
                             onUpdateRoutineTime(routine.id, categories[currentIndex + 1])
                         }
                     },
                     onDragCancel = {
-                        offsetY = 0f
                         isDragging = false
+                        onAutoScroll(0f)
+                        offsetY = 0f
                     }
                 )
             },
@@ -347,7 +376,7 @@ fun RoutineCard(
                 if (routine.description.isNotBlank()) {
                     Text(routine.description, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                 }
-                Text(if (isDragging) "⇄ Déplacement fluide entre catégories..." else "✋ Appui long puis glisser haut/bas", fontSize = 10.sp, color = if (isDragging) MaterialTheme.colorScheme.primary else Color.Gray)
+                Text(if (isDragging) "⇄ Déplacement avec auto-défilement..." else "✋ Appui long puis glisser (auto-scroll)", fontSize = 10.sp, color = if (isDragging) MaterialTheme.colorScheme.primary else Color.Gray)
             }
             Text("⭐ ${routine.starsReward}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
             Spacer(modifier = Modifier.width(8.dp))
