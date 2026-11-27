@@ -13,8 +13,10 @@ android {
         applicationId = "com.example.launchertlphoneenfant.parent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 99999
-        versionName = "3.0"
+        val baseCode = 2000
+        val runNum = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = baseCode + runNum
+        versionName = "2.3.$runNum"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,7 +32,7 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            // Utiliser la signature debug standard pour garantir 100% de compatibilité des mises à jour in-app
         }
         release {
             signingConfig = signingConfigs.getByName("release")
