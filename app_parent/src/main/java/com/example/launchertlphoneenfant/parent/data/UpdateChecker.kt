@@ -36,7 +36,6 @@ data class AppUpdateInfo(
 class UpdateChecker {
 
     suspend fun checkCloudUpdate(appType: String = "parent"): AppUpdateInfo = withContext(Dispatchers.IO) {
-        // Utilisation prioritaire de GitHub Raw (exactement comme dans Routinercompense)
         val urls = listOf(
             "https://raw.githubusercontent.com/bouriez28-wq/Launcher-enfant-android/main/public/version.json",
             "https://launcher-enfant.web.app/version.json"
@@ -48,13 +47,14 @@ class UpdateChecker {
             }
         }
 
-        // Fallback de secours infaillible garanti à 100%
+        val currentVersionCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
+        val latestCode = 3000
         return@withContext AppUpdateInfo(
-            hasUpdate = true,
+            hasUpdate = latestCode > currentVersionCode,
             latestVersionName = "3.0",
-            latestVersionCode = 99999,
-            releaseNotes = "🎉 Nouvelle version majeure v3.0 disponible !\n\n- Glisser-déposer fluide avec auto-défilement\n- Stabilité et performances accrues",
-            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+            latestVersionCode = latestCode,
+            releaseNotes = "",
+            downloadUrl = ""
         )
     }
 
@@ -89,15 +89,19 @@ class UpdateChecker {
 
                 val dataObj = obj.optJSONObject("data") ?: obj
 
-                val latestVersionCode = dataObj.optInt("latestVersionCode", 99999)
+                val latestVersionCode = dataObj.optInt("latestVersionCode", 3000)
                 val latestVersionName = dataObj.optString("latestVersionName", "3.0")
-                val releaseNotes = dataObj.optString("releaseNotes", "Nouvelle version v3.0 disponible.")
+                val releaseNotes = dataObj.optString("releaseNotes", "Nouvelle version disponible.")
                 val downloadUrl = dataObj.optString("downloadUrl", "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk")
 
-                Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, name=$latestVersionName")
+                val currentVersionCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
+                // Comparaison stricte normale : si la version du serveur est supérieure à l'app installée
+                val hasUpdate = latestVersionCode > currentVersionCode
+
+                Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, current=$currentVersionCode, hasUpdate=$hasUpdate")
 
                 return AppUpdateInfo(
-                    hasUpdate = true,
+                    hasUpdate = hasUpdate,
                     latestVersionName = latestVersionName,
                     latestVersionCode = latestVersionCode,
                     releaseNotes = releaseNotes,
