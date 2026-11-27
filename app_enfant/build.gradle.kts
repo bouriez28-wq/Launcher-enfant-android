@@ -13,10 +13,10 @@ android {
         applicationId = "com.example.launchertlphoneenfant"
         minSdk = 26
         targetSdk = 35
-        val baseCode = 1000
+        val baseCode = 2000
         val runNum = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1
         versionCode = baseCode + runNum
-        versionName = "2.2.$runNum"
+        versionName = "2.3.$runNum"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

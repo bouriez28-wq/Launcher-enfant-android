@@ -34,23 +34,22 @@ jobs:
         env:
           BUILD_NUMBER: ${{ github.run_number }}
 
-      - name: Générer public/version.json synchronisé avec le Build (+1 pour test update)
+      - name: Générer public/version.json synchronisé avec la v2.3
         run: |
           RUN_NUM=${{ github.run_number }}
-          BASE_CODE=1000
+          BASE_CODE=2000
           APP_CODE=$((BASE_CODE + RUN_NUM))
-          SERVER_CODE=$((APP_CODE + 1))
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           
           cat << EOF > public/version.json
           {
-            "latestVersionCode": $SERVER_CODE,
-            "latestVersionName": "2.2.$SERVER_CODE",
+            "latestVersionCode": $APP_CODE,
+            "latestVersionName": "2.3.$RUN_NUM",
             "downloadUrl": "$PARENT_URL",
-            "releaseNotes": "🎉 Nouvelle version v2.2.$SERVER_CODE disponible !\n\n- Amélioration de la stabilité et du glisser-déposer"
+            "releaseNotes": "🎉 Nouvelle version v2.3.$RUN_NUM disponible !\n\n- Glissement vertical des tâches et stabilité accrue"
           }
           EOF
-          echo "version.json généré avec le code serveur $SERVER_CODE (App code: $APP_CODE)"
+          echo "version.json généré avec le code $APP_CODE (v2.3.$RUN_NUM)"
 
       - name: Publier la Release GitHub (latest-dev)
         uses: softprops/action-gh-release@v2
@@ -67,20 +66,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mettre à jour Firebase Database (Synchronisation automatique)
+      - name: Mettre à jour Firebase Database (Version synchronisée v2.3)
         run: |
           RUN_NUM=${{ github.run_number }}
-          BASE_CODE=1000
+          BASE_CODE=2000
           APP_CODE=$((BASE_CODE + RUN_NUM))
-          SERVER_CODE=$((APP_CODE + 1))
           PARENT_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
           CHILD_URL="https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_enfant-debug.apk"
           
-          PAYLOAD='{"latestVersionCode": '$SERVER_CODE', "latestVersionName": "2.2.'$SERVER_CODE'", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "🎉 Nouvelle version v2.2.'$SERVER_CODE' disponible !"}'
-          CHILD_PAYLOAD='{"latestVersionCode": '$SERVER_CODE', "latestVersionName": "2.2.'$SERVER_CODE'", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "🎉 Nouvelle version v2.2.'$SERVER_CODE' disponible !"}'
+          PAYLOAD='{"latestVersionCode": '$APP_CODE', "latestVersionName": "2.3.'$RUN_NUM'", "downloadUrl": "'$PARENT_URL'", "releaseNotes": "🎉 Nouvelle version v2.3.'$RUN_NUM' disponible !"}'
+          CHILD_PAYLOAD='{"latestVersionCode": '$APP_CODE', "latestVersionName": "2.3.'$RUN_NUM'", "downloadUrl": "'$CHILD_URL'", "releaseNotes": "🎉 Nouvelle version v2.3.'$RUN_NUM' disponible !"}'
 
           curl -s -X PATCH -d "$PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/families/FAM-8492/app_update.json"
           curl -s -X PATCH -d "$PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/parent.json"
           curl -s -X PATCH -d "$CHILD_PAYLOAD" "https://launcher-enfant-default-rtdb.europe-west1.firebasedatabase.app/app_updates/child.json"
           
-          echo "Base de données Firebase mise à jour avec la version $SERVER_CODE !"
+          echo "Base de données Firebase mise à jour avec la version v2.3.$RUN_NUM !"
