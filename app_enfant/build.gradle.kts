@@ -13,10 +13,8 @@ android {
         applicationId = "com.example.launchertlphoneenfant"
         minSdk = 26
         targetSdk = 35
-        val baseCode = 2000
-        val runNum = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1
-        versionCode = baseCode + runNum
-        versionName = "2.3.$runNum"
+        versionCode = 3000
+        versionName = "3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -90,6 +88,7 @@ dependencies {
 
     // Firebase
     val firebaseBom = platform(libs.firebase.bom)
+    implementation(firebaseBom)
     implementation(firebaseBom)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.database)
