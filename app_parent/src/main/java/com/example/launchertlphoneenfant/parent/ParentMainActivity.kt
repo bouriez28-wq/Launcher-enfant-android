@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.launchertlphoneenfant.parent.data.ApkInstaller
@@ -89,6 +90,10 @@ class ParentMainActivity : ComponentActivity() {
             ExistingPeriodicWorkPolicy.KEEP,
             updateWorkRequest
         )
+
+        // Déclenchement immédiat au démarrage d'une vérification de mise à jour en arrière-plan pour la notification système
+        val immediateWork = OneTimeWorkRequestBuilder<UpdateCheckWorker>().build()
+        WorkManager.getInstance(this).enqueue(immediateWork)
 
         // Gérer le clic sur la notification de mise à jour s'il y en a un
         handleUpdateIntent(intent)
