@@ -1,6 +1,6 @@
 {
-  "latestVersionCode": 3000,
-  "latestVersionName": "3.0",
+  "latestVersionCode": 3001,
+  "latestVersionName": "3.1",
   "downloadUrl": "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk",
-  "releaseNotes": "🎉 Version v3.0 stable installée avec succès !"
+  "releaseNotes": "🎉 Nouvelle version v3.1 disponible !\n\n- Glisser-déposer fluide avec auto-défilement\n- Système de mise à jour 100% production stabilisé"
 }
