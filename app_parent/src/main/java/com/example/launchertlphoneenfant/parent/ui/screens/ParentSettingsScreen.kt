@@ -235,7 +235,7 @@ fun ParentSettingsScreen(
             }
         }
 
-        // 6. Vérification de mise à jour (Connexion réelle à version.json sur Firebase Hosting)
+        // 6. Vérification de mise à jour (Connexion réelle au cloud Firebase Hosting)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
