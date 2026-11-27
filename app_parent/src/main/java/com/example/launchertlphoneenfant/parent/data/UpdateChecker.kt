@@ -47,13 +47,14 @@ class UpdateChecker {
             }
         }
 
-        // Fallback de secours infaillible (garantit l'affichage de la pop-up pour les tests)
+        val currentVersionCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
+        val latestCode = 3000
         return@withContext AppUpdateInfo(
-            hasUpdate = true,
-            latestVersionName = "3.2",
-            latestVersionCode = 3002,
-            releaseNotes = "🎉 Nouvelle version v3.2 disponible !\n\n- Amélioration de la stabilité et du glisser-déposer",
-            downloadUrl = "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk"
+            hasUpdate = latestCode > currentVersionCode,
+            latestVersionName = "3.0",
+            latestVersionCode = latestCode,
+            releaseNotes = "",
+            downloadUrl = ""
         )
     }
 
@@ -88,15 +89,19 @@ class UpdateChecker {
 
                 val dataObj = obj.optJSONObject("data") ?: obj
 
-                val latestVersionCode = dataObj.optInt("latestVersionCode", 3002)
-                val latestVersionName = dataObj.optString("latestVersionName", "3.2")
-                val releaseNotes = dataObj.optString("releaseNotes", "Nouvelle version v3.2 disponible.")
+                val latestVersionCode = dataObj.optInt("latestVersionCode", 3000)
+                val latestVersionName = dataObj.optString("latestVersionName", "3.0")
+                val releaseNotes = dataObj.optString("releaseNotes", "Nouvelle version disponible.")
                 val downloadUrl = dataObj.optString("downloadUrl", "https://github.com/bouriez28-wq/Launcher-enfant-android/releases/download/latest-dev/app_parent-debug.apk")
 
-                Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, name=$latestVersionName")
+                val currentVersionCode = com.example.launchertlphoneenfant.parent.BuildConfig.VERSION_CODE
+                // Comparaison stricte en mode production normal
+                val hasUpdate = latestVersionCode > currentVersionCode
+
+                Log.d("UpdateChecker", "Successfully fetched from $versionJsonUrl: code=$latestVersionCode, current=$currentVersionCode, hasUpdate=$hasUpdate")
 
                 return AppUpdateInfo(
-                    hasUpdate = true, // Forcé à true pour que le bouton affiche toujours la pop-up lors de vos tests
+                    hasUpdate = hasUpdate,
                     latestVersionName = latestVersionName,
                     latestVersionCode = latestVersionCode,
                     releaseNotes = releaseNotes,
